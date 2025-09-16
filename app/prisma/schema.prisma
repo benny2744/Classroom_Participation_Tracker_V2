@@ -1,0 +1,111 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/classroom_participation_tracker/app/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Teacher {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  rooms     Room[]
+  
+  @@map("teachers")
+}
+
+model Room {
+  id          String    @id @default(cuid())
+  code        String    @unique @db.VarChar(6)
+  name        String
+  description String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Teacher relation
+  teacherId   String
+  teacher     Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  
+  // Relations
+  students    Student[]
+  participations Participation[]
+  sessions    Session[]
+  
+  @@map("rooms")
+}
+
+model Student {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Room relation
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  
+  // Relations
+  participations Participation[]
+  
+  @@unique([name, roomId]) // Unique student name per room
+  @@map("students")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  name      String   @default("New Session")
+  isActive  Boolean  @default(true)
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Room relation
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  
+  // Relations
+  participations Participation[]
+  
+  @@map("sessions")
+}
+
+model Participation {
+  id          String            @id @default(cuid())
+  points      Int               @default(1) // 1-3 points
+  status      ParticipationStatus @default(PENDING)
+  submittedAt DateTime          @default(now())
+  approvedAt  DateTime?
+  rejectedAt  DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  
+  // Student relation
+  studentId   String
+  student     Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  // Room relation
+  roomId      String
+  room        Room              @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  
+  // Session relation
+  sessionId   String
+  session     Session           @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  @@map("participations")
+}
+
+enum ParticipationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
