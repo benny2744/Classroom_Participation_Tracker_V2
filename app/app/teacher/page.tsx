@@ -48,6 +48,8 @@ export default function TeacherDashboard() {
   const [teacherEmail, setTeacherEmail] = useState('');
   const [roomName, setRoomName] = useState('');
   const [roomDescription, setRoomDescription] = useState('');
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvPreview, setCsvPreview] = useState<string[]>([]);
   
   const router = useRouter();
 
@@ -108,9 +110,48 @@ export default function TeacherDashboard() {
     }
   };
 
+  const handleCsvFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setCsvFile(null);
+      setCsvPreview([]);
+      return;
+    }
+
+    // Validate file type
+    if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+      toast.error('Please select a CSV file');
+      event.target.value = '';
+      return;
+    }
+
+    setCsvFile(file);
+
+    // Parse CSV for preview
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+      const studentNames = lines.map(line => {
+        // Handle potential quotes and commas
+        return line.replace(/^"|"$/g, '').split(',')[0].trim();
+      }).filter(name => name);
+
+      setCsvPreview(studentNames.slice(0, 10)); // Show first 10 names
+    } catch (error) {
+      toast.error('Failed to parse CSV file');
+      setCsvFile(null);
+      setCsvPreview([]);
+    }
+  };
+
   const handleCreateRoom = async () => {
     if (!roomName.trim()) {
       toast.error('Room name is required');
+      return;
+    }
+
+    if (!csvFile) {
+      toast.error('Please upload a CSV file with student names');
       return;
     }
 
@@ -119,14 +160,16 @@ export default function TeacherDashboard() {
     setIsCreatingRoom(true);
 
     try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('name', roomName);
+      formData.append('description', roomDescription);
+      formData.append('teacherId', teacher.id);
+      formData.append('csvFile', csvFile);
+
       const response = await fetch('/api/rooms', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: roomName,
-          description: roomDescription,
-          teacherId: teacher.id
-        })
+        body: formData
       });
 
       const data = await response.json();
@@ -136,7 +179,9 @@ export default function TeacherDashboard() {
         setShowCreateDialog(false);
         setRoomName('');
         setRoomDescription('');
-        toast.success(`Room created! Code: ${data.code}`);
+        setCsvFile(null);
+        setCsvPreview([]);
+        toast.success(`Room created! Code: ${data.code}. Added ${data.studentsAdded} students.`);
       } else {
         toast.error(data.error || 'Failed to create room');
       }
@@ -271,6 +316,39 @@ export default function TeacherDashboard() {
                     rows={3}
                   />
                 </div>
+                <div>
+                  <Label htmlFor="csvFile">Student Roster (CSV File)</Label>
+                  <Input
+                    id="csvFile"
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCsvFileChange}
+                    className="cursor-pointer"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Upload a CSV file with one student name per line (first column only)
+                  </p>
+                </div>
+                {csvPreview.length > 0 && (
+                  <div className="bg-gray-50 p-3 rounded-md">
+                    <p className="text-sm font-medium mb-2">Preview ({csvPreview.length} names):</p>
+                    <div className="text-sm text-gray-700 space-y-1">
+                      {csvPreview.map((name, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <span className="w-6 h-6 bg-blue-100 text-blue-800 rounded-full text-xs flex items-center justify-center">
+                            {index + 1}
+                          </span>
+                          {name}
+                        </div>
+                      ))}
+                      {csvFile && csvPreview.length < 10 && (
+                        <div className="text-xs text-gray-500">
+                          ... and potentially more in the file
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <Button 
                     variant="outline" 

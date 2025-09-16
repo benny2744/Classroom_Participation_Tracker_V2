@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Users, Send, Loader2, CheckCircle, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -27,8 +28,7 @@ interface Room {
 export default function StudentRoomPage({ params }: { params: { id: string } }) {
   const [room, setRoom] = useState<Room | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState('');
-  const [customName, setCustomName] = useState('');
+  const [selectedStudentId, setSelectedStudentId] = useState('');
   const [selectedPoints, setSelectedPoints] = useState('1');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,15 +70,19 @@ export default function StudentRoomPage({ params }: { params: { id: string } }) 
   };
 
   const handleSubmitParticipation = async () => {
-    const studentName = selectedStudent === 'custom' ? customName.trim() : selectedStudent;
-    
-    if (!studentName) {
-      toast.error('Please select or enter your name');
+    if (!selectedStudentId) {
+      toast.error('Please select your name');
       return;
     }
 
     if (!selectedPoints || parseInt(selectedPoints) < 1 || parseInt(selectedPoints) > 3) {
       toast.error('Please select points (1-3)');
+      return;
+    }
+
+    const selectedStudent = students.find(s => s.id === selectedStudentId);
+    if (!selectedStudent) {
+      toast.error('Selected student not found');
       return;
     }
 
@@ -89,7 +93,7 @@ export default function StudentRoomPage({ params }: { params: { id: string } }) 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          studentName,
+          studentName: selectedStudent.name,
           roomId: params.id,
           points: parseInt(selectedPoints)
         })
@@ -102,8 +106,7 @@ export default function StudentRoomPage({ params }: { params: { id: string } }) 
         toast.success(`Participation submitted! (${selectedPoints} ${selectedPoints === '1' ? 'point' : 'points'})`);
         
         // Reset form
-        setSelectedStudent('');
-        setCustomName('');
+        setSelectedStudentId('');
         setSelectedPoints('1');
         
         // Refresh data
@@ -175,45 +178,11 @@ export default function StudentRoomPage({ params }: { params: { id: string } }) 
               Submit Participation
             </CardTitle>
             <CardDescription>
-              Select your name and the points you think you deserve
+              Select points and choose your name from the list below
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Student Selection */}
-            <div>
-              <Label htmlFor="student">Your Name</Label>
-              <Select 
-                value={selectedStudent} 
-                onValueChange={setSelectedStudent}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your name" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="custom">Enter new name...</SelectItem>
-                  {students.map((student) => (
-                    <SelectItem key={student.id} value={student.name}>
-                      {student.name} ({student.totalPoints} pts)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Custom Name Input */}
-            {selectedStudent === 'custom' && (
-              <div>
-                <Label htmlFor="customName">Enter Your Name</Label>
-                <Input
-                  id="customName"
-                  placeholder="Your name"
-                  value={customName}
-                  onChange={(e) => setCustomName(e.target.value)}
-                />
-              </div>
-            )}
-
-            {/* Points Selection */}
+          <CardContent className="space-y-6">
+            {/* Points Selection - At Top */}
             <div>
               <Label htmlFor="points">Points (1-3)</Label>
               <Select 
@@ -231,9 +200,52 @@ export default function StudentRoomPage({ params }: { params: { id: string } }) 
               </Select>
             </div>
 
+            {/* Student Selection - Radio Button Grid */}
+            <div>
+              <Label>Select Your Name</Label>
+              {students.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">No students in this room yet</p>
+              ) : (
+                <RadioGroup 
+                  value={selectedStudentId} 
+                  onValueChange={setSelectedStudentId}
+                  className="mt-3"
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto">
+                    {students
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((student) => (
+                        <div 
+                          key={student.id} 
+                          className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors"
+                        >
+                          <RadioGroupItem 
+                            value={student.id} 
+                            id={student.id}
+                            className="flex-shrink-0"
+                          />
+                          <Label 
+                            htmlFor={student.id} 
+                            className="flex-1 cursor-pointer font-medium"
+                          >
+                            <div className="flex justify-between items-center">
+                              <span>{student.name}</span>
+                              <span className="text-sm text-blue-600 font-bold">
+                                {student.totalPoints} pts
+                              </span>
+                            </div>
+                          </Label>
+                        </div>
+                      ))
+                    }
+                  </div>
+                </RadioGroup>
+              )}
+            </div>
+
             <Button 
               onClick={handleSubmitParticipation}
-              disabled={isSubmitting || !selectedPoints || (!selectedStudent && !customName.trim())}
+              disabled={isSubmitting || !selectedPoints || !selectedStudentId}
               className="w-full"
             >
               {isSubmitting ? (

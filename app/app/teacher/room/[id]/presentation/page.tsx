@@ -299,8 +299,8 @@ export default function PresentationView({ params }: { params: { id: string } })
 
       {/* Main Content */}
       <div className="flex h-[calc(100vh-80px)]">
-        {/* Class Roster - Left Panel */}
-        <div className="flex-1 p-6 overflow-y-auto">
+        {/* Class Roster - Left Panel (85% width) */}
+        <div className="flex-[85] p-6 overflow-y-auto">
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold flex items-center gap-2">
@@ -457,59 +457,62 @@ export default function PresentationView({ params }: { params: { id: string } })
           </div>
         </div>
 
-        {/* Approval Queue - Right Panel */}
-        <div className="w-96 bg-white border-l p-6">
-          <div className="sticky top-0 bg-white pb-4">
-            <h2 className="text-xl font-semibold flex items-center gap-2 mb-4">
-              <Clock className="w-5 h-5" />
-              Approval Queue ({pendingParticipations.length})
-            </h2>
+        {/* Approval Queue - Right Panel (15% width, compact) */}
+        <div className="flex-[15] bg-white border-l p-4">
+          <div className="sticky top-0 bg-white pb-3">
+            <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
+              <Clock className="w-4 h-4" />
+              Queue ({pendingParticipations.length})
+            </h3>
           </div>
           
-          <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto">
+          <div className="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
             {pendingParticipations.length === 0 ? (
-              <div className="text-center py-8">
-                <Clock className="w-8 h-8 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600">No pending submissions</p>
-                <p className="text-sm text-gray-500">New submissions will appear here</p>
+              <div className="text-center py-6">
+                <Clock className="w-6 h-6 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm text-gray-600">No pending</p>
+                <p className="text-xs text-gray-500">Submissions appear here</p>
               </div>
             ) : (
               pendingParticipations.map((participation) => (
                 <Card key={participation.id} className="shadow-sm border-l-4 border-l-amber-400">
-                  <CardContent className="py-4">
-                    <div className="space-y-3">
+                  <CardContent className="py-3">
+                    <div className="space-y-2">
                       <div>
-                        <p className="font-medium">{participation.studentName}</p>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">
-                            {participation.points} {participation.points === 1 ? 'point' : 'points'}
+                        <p className="font-medium text-sm">{participation.studentName}</p>
+                        <div className="flex items-center justify-between">
+                          <Badge variant="outline" className="text-xs">
+                            {participation.points}pt{participation.points !== 1 ? 's' : ''}
                           </Badge>
                           <span className="text-xs text-gray-500">
-                            {new Date(participation.submittedAt).toLocaleTimeString()}
+                            {new Date(participation.submittedAt).toLocaleTimeString([], { 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            })}
                           </span>
                         </div>
                       </div>
                       
-                      <div className="flex gap-2">
+                      <div className="grid grid-cols-2 gap-1">
                         <Button
                           size="sm"
                           variant="default"
                           onClick={() => handleApproval(participation.id, 'approve')}
                           disabled={processingApprovals.has(participation.id)}
-                          className="flex-1 bg-green-600 hover:bg-green-700"
+                          className="bg-green-600 hover:bg-green-700 px-2 py-1 h-auto text-xs"
                         >
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                          Approve
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Yes
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleApproval(participation.id, 'reject')}
                           disabled={processingApprovals.has(participation.id)}
-                          className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                          className="border-red-200 text-red-600 hover:bg-red-50 px-2 py-1 h-auto text-xs"
                         >
-                          <XCircle className="w-4 h-4 mr-1" />
-                          Reject
+                          <XCircle className="w-3 h-3 mr-1" />
+                          No
                         </Button>
                       </div>
                     </div>

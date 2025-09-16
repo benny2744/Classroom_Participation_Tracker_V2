@@ -8,11 +8,45 @@ export const dynamic = 'force-dynamic';
 // Create a new room
 export async function POST(request: Request) {
   try {
-    const { name, description, teacherId } = await request.json();
+    const formData = await request.formData();
+    
+    const name = formData.get('name') as string;
+    const description = formData.get('description') as string;
+    const teacherId = formData.get('teacherId') as string;
+    const csvFile = formData.get('csvFile') as File;
     
     if (!name || !teacherId) {
       return NextResponse.json(
         { error: 'Name and teacher ID are required' },
+        { status: 400 }
+      );
+    }
+
+    if (!csvFile) {
+      return NextResponse.json(
+        { error: 'CSV file with student names is required' },
+        { status: 400 }
+      );
+    }
+
+    // Parse CSV file
+    const csvText = await csvFile.text();
+    const lines = csvText.split('\n').map(line => line.trim()).filter(line => line);
+    const studentNames = lines.map(line => {
+      // Handle potential quotes and commas - take only first column
+      return line.replace(/^"|"$/g, '').split(',')[0].trim();
+    }).filter(name => name && name.length > 0);
+
+    if (studentNames.length === 0) {
+      return NextResponse.json(
+        { error: 'CSV file must contain at least one student name' },
+        { status: 400 }
+      );
+    }
+
+    if (studentNames.length > 50) {
+      return NextResponse.json(
+        { error: 'Maximum 50 students allowed per room' },
         { status: 400 }
       );
     }
@@ -32,34 +66,63 @@ export async function POST(request: Request) {
       }
     } while (await prisma.room.findUnique({ where: { code } }));
 
-    const room = await prisma.room.create({
-      data: {
-        name,
-        description,
-        code,
-        teacherId
-      },
-      include: {
-        teacher: true,
-        _count: {
-          select: {
-            students: true,
-            sessions: true
+    // Create room and students in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create room
+      const room = await tx.room.create({
+        data: {
+          name,
+          description: description || null,
+          code,
+          teacherId
+        },
+        include: {
+          teacher: true
+        }
+      });
+
+      // Create initial session for the room
+      await tx.session.create({
+        data: {
+          name: `${name} - Session 1`,
+          roomId: room.id,
+          isActive: true
+        }
+      });
+
+      // Create students
+      const studentsData = studentNames.map(studentName => ({
+        name: studentName,
+        roomId: room.id
+      }));
+
+      await tx.student.createMany({
+        data: studentsData,
+        skipDuplicates: true
+      });
+
+      // Get final room data with counts
+      const finalRoom = await tx.room.findUnique({
+        where: { id: room.id },
+        include: {
+          teacher: true,
+          _count: {
+            select: {
+              students: true,
+              sessions: true,
+              participations: true
+            }
           }
         }
-      }
+      });
+
+      return { room: finalRoom, studentsAdded: studentNames.length };
     });
 
-    // Create initial session for the room
-    await prisma.session.create({
-      data: {
-        name: `${name} - Session 1`,
-        roomId: room.id,
-        isActive: true
-      }
+    return NextResponse.json({
+      ...result.room,
+      studentsAdded: result.studentsAdded
     });
-
-    return NextResponse.json(room);
   } catch (error: any) {
     console.error('Error creating room:', error);
     return NextResponse.json(
