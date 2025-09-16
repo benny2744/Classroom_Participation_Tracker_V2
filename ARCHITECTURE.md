@@ -3,7 +3,7 @@
 
 ## Overview
 
-The Classroom Participation Tracker is built as a modern web application with real-time capabilities, designed to scale across multiple concurrent teacher sessions while maintaining simplicity and performance.
+The Classroom Participation Tracker is built as a modern, secure web application with real-time capabilities. The system is designed to scale across multiple concurrent teacher sessions while maintaining simplicity, security, and performance. This document outlines the complete system architecture, including recent enhancements for authentication, file management, and room administration.
 
 ## System Architecture Diagram
 
@@ -11,28 +11,33 @@ The Classroom Participation Tracker is built as a modern web application with re
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   Student Web   │    │   Teacher Web    │    │  Presentation   │
 │   Interface     │    │   Dashboard      │    │     View        │
+│   (React/Next)  │    │  (React/Next)    │    │  (React/Next)   │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
          │                       │                       │
          └───────────────────────┼───────────────────────┘
                                  │
                     ┌────────────▼────────────┐
-                    │     Next.js Frontend    │
+                    │     Next.js 14 App      │
                     │   (React Components)    │
+                    │   TypeScript/Tailwind   │
                     └────────────┬────────────┘
-                                 │ HTTP/WebSocket
+                                 │ HTTP/API Routes
                     ┌────────────▼────────────┐
-                    │    Express.js Server    │
-                    │     (API Routes)        │
+                    │    API Layer (Next.js)  │
+                    │  Authentication & CRUD   │
+                    │    File Upload/Export   │
                     └────────────┬────────────┘
                                  │
                     ┌────────────▼────────────┐
-                    │    Socket.io Server     │
+                    │  WebSocket Layer        │
                     │   (Real-time Events)    │
+                    │   Socket.io/Native WS   │
                     └────────────┬────────────┘
                                  │
                     ┌────────────▼────────────┐
                     │   PostgreSQL Database   │
                     │    (Prisma ORM)         │
+                    │   + File Storage (S3)   │
                     └─────────────────────────┘
 ```
 
@@ -40,152 +45,363 @@ The Classroom Participation Tracker is built as a modern web application with re
 
 ### Frontend Layer
 
-#### Core Components
+#### Authentication Components
 
-**1. Student Interface (`/student`)**
-- `StudentLanding`: Room code entry and validation
-- `StudentParticipation`: Point submission interface with columned student list and radio button selection
-- `StudentStatus`: Real-time feedback and current status
+**Teacher Authentication Flow**
+```typescript
+// Authentication states and components
+interface AuthState {
+  mode: 'login' | 'register'
+  isLoading: boolean
+  user: Teacher | null
+}
 
-**2. Teacher Dashboard (`/teacher`)**
-- `TeacherDashboard`: Room management and overview
-- `RoomCreation`: New room setup with one-column CSV student roster upload
-- `RoomManagement`: Active session controls and settings
+// Core auth components:
+- TeacherLogin: Email/password authentication
+- TeacherRegister: Account creation with validation
+- AuthToggle: Switch between login/register modes
+- LogoutButton: Secure session termination
+```
 
-**3. Presentation View (`/teacher/[roomCode]/presentation`)**
-- `PresentationLayout`: Dual-panel layout management
-- `StudentRoster`: Real-time class roster with points
-- `ApprovalQueue`: Fixed-position approval interface
-- `ResetControls`: Class and individual reset functionality
+**Features:**
+- Password strength validation (minimum 6 characters)
+- Email format validation
+- Secure password confirmation
+- Loading states with visual feedback
+- Error handling with user-friendly messages
 
-#### Shared Components
+#### Student Interface Components
 
-**UI Components**
-- `Button`, `Input`, `Dialog`: Base UI elements
-- `LoadingSpinner`: Async operation feedback
-- `Toast`: User notification system
-- `ConfirmDialog`: Safety confirmation modals
+**Student Landing (`/student`)**
+```typescript
+interface StudentLandingProps {
+  onRoomJoin: (roomCode: string) => void
+  validationError?: string
+  isLoading: boolean
+}
 
-**Real-time Components**
-- `SocketProvider`: WebSocket connection management
-- `RealtimeUpdates`: Live data synchronization
-- `ConnectionStatus`: Network status indicator
+// Enhanced features:
+- Room code input with real-time validation
+- Columned student list with radio button selection
+- Point selection dropdown positioned at top
+- Real-time room status checking
+- Mobile-optimized responsive design
+```
+
+#### Teacher Dashboard Components
+
+**Teacher Dashboard (`/teacher`)**
+```typescript
+interface TeacherDashboardProps {
+  teacher: Teacher
+  rooms: Room[]
+  onRoomCreate: (roomData: RoomCreationData) => void
+  onRoomDelete: (roomId: string) => void
+  onStudentUpload: (roomId: string, file: File) => void
+}
+
+// New room management features:
+- Room creation with CSV student roster upload
+- Add students to existing rooms via CSV
+- Safe room deletion with confirmation dialogs
+- Room statistics and activity monitoring
+- Logout functionality with session cleanup
+```
+
+**Room Management Features:**
+- **Create Room**: Name, description, and initial CSV upload
+- **Add Students**: Upload additional students to existing rooms
+- **Delete Room**: Confirmation dialog showing impact (students/participations)
+- **Room Statistics**: Student count, participation totals, activity status
+
+#### Presentation View Components
+
+**Presentation Layout (`/teacher/[roomCode]/presentation`)**
+```typescript
+interface PresentationViewProps {
+  room: Room
+  students: Student[]
+  pendingSubmissions: Submission[]
+  onApproval: (submissionId: string, approved: boolean) => void
+  onReset: (type: ResetType, targetId?: string) => void
+}
+
+// Enhanced layout features:
+- 75% student roster with real-time point updates
+- 25% compact approval queue (fixed position)
+- Keyboard shortcuts for quick approvals (Enter/Escape)
+- Responsive breakpoints for different screen sizes
+- Auto-scroll to new submissions
+```
+
+#### Shared UI Components
+
+**Enhanced Component Library:**
+```typescript
+// Core UI Components (shadcn/ui based)
+- Button: Multiple variants with loading states
+- Input: Validation states and file upload support
+- Dialog: Confirmation and form dialogs
+- AlertDialog: Destructive action confirmations
+- Badge: Status indicators and counters
+- Card: Content containers with hover effects
+- Toast: Success/error notifications
+- LoadingSpinner: Async operation feedback
+
+// Custom Components
+- CSVUploadDialog: File validation and preview
+- ConfirmDeleteDialog: Safety confirmations for destructive actions
+- RoomStatsCard: Statistics display with icons
+- StudentList: Responsive columned layout with selection
+```
 
 ### Backend Layer
 
-#### API Routes Structure
+#### Authentication System
+
+**Password-Based Authentication**
+```typescript
+// Authentication endpoints
+POST /api/auth/signup {
+  name: string
+  email: string
+  password: string (min 6 chars)
+}
+
+POST /api/auth/signin {
+  email: string
+  password: string
+}
+
+// Security features:
+- bcrypt password hashing (10 rounds)
+- Email uniqueness validation
+- Password strength requirements
+- Secure session management
+- Input sanitization and validation
+```
+
+#### Enhanced API Routes Structure
 
 ```
 /api/
-├── rooms/
-│   ├── create              # POST: Create new room with CSV upload
-│   ├── validate            # POST: Validate room code
-│   ├── [roomCode]/
-│   │   ├── activate        # POST: Toggle room status
-│   │   ├── students        # GET: Retrieve room roster
-│   │   ├── submissions     # GET: Pending approvals
-│   │   ├── approve         # POST: Approve submission
-│   │   ├── reject          # POST: Reject submission
-│   │   ├── reset           # POST: Reset operations
-│   │   └── upload-csv      # POST: Upload student CSV file
-├── students/
-│   ├── join                # POST: Join room session
-│   ├── submit              # POST: Submit points
-│   └── status              # GET: Current student status
-└── export/
-    └── csv                 # GET: Export room data
+├── auth/                   # Authentication system
+│   ├── signup/            # Teacher registration
+│   ├── signin/            # Teacher login
+│   └── [...nextauth]/     # NextAuth integration (if needed)
+├── rooms/                 # Room management
+│   ├── create/           # Create room with CSV upload
+│   ├── validate/         # Room code validation
+│   ├── [id]/
+│   │   ├── delete/       # Safe room deletion
+│   │   ├── upload-students/ # Add students via CSV
+│   │   ├── stats/        # Room statistics
+│   │   ├── students/     # Student roster
+│   │   └── sessions/     # Session management
+├── students/              # Student operations
+│   ├── join/             # Join room session
+│   ├── submit/           # Submit participation points
+│   └── status/           # Student status and points
+├── participations/        # Participation management
+│   ├── pending/          # Get pending approvals
+│   ├── [id]/
+│   │   ├── approve/      # Approve participation
+│   │   └── reject/       # Reject participation
+├── export/               # Data export
+│   └── csv/              # CSV export functionality
+└── reset/                # Reset operations
+    ├── student/          # Individual student reset
+    ├── class/            # Full class reset
+    └── session/          # Session reset
 ```
 
-#### WebSocket Events
+#### File Management System
 
-**Client → Server Events**
+**CSV Upload Processing**
 ```typescript
-// Room Management
-'room:join' -> { roomCode: string, studentId?: string }
-'room:leave' -> { roomCode: string }
+// Enhanced CSV processing
+interface CSVUploadResult {
+  studentsAdded: number
+  duplicatesSkipped: number
+  totalProcessed: number
+  errors: string[]
+}
 
-// Submissions
-'submission:create' -> { studentId: string, points: number, roomCode: string }
-
-// Teacher Actions
-'approval:approve' -> { submissionId: string }
-'approval:reject' -> { submissionId: string }
-'room:reset' -> { roomCode: string, type: 'student' | 'class' | 'session' }
+// Features:
+- File type validation (.csv only)
+- Content parsing with error handling
+- Duplicate detection and reporting
+- Preview functionality (first 10 names)
+- Batch student creation with transaction safety
 ```
 
-**Server → Client Events**
-```typescript
-// Real-time Updates
-'room:status' -> { isActive: boolean, participantCount: number }
-'roster:update' -> { students: Student[], timestamp: number }
-'queue:update' -> { submissions: Submission[] }
-'points:update' -> { studentId: string, newTotal: number }
+#### WebSocket Events (Enhanced)
 
-// System Events
-'error:room' -> { message: string, code: string }
-'connection:status' -> { status: 'connected' | 'disconnected' }
+**Real-time Communication Events**
+```typescript
+// Client → Server Events
+interface SocketEvents {
+  'room:join': { roomCode: string, role: 'teacher' | 'student' }
+  'room:leave': { roomCode: string }
+  'submission:create': { studentId: string, points: number }
+  'approval:process': { submissionIds: string[], approved: boolean }
+  'room:update': { roomId: string, changes: Partial<Room> }
+}
+
+// Server → Client Events
+interface ServerEvents {
+  'room:status': { isActive: boolean, participantCount: number }
+  'roster:update': { students: Student[], timestamp: number }
+  'queue:update': { submissions: Submission[] }
+  'points:update': { studentId: string, newTotal: number }
+  'room:deleted': { roomId: string, message: string }
+  'student:added': { students: Student[], count: number }
+}
 ```
 
 ## Database Architecture
 
-### Entity Relationship Diagram
+### Enhanced Entity Relationship Diagram
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│    Room     │────▶│   Student   │────▶│ Submission  │
-└─────────────┘     └─────────────┘     └─────────────┘
-       │                   │                   │
-       ▼                   ▼                   ▼
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│ResetHistory │     │StudentStats │     │ApprovalLog  │
-└─────────────┘     └─────────────┘     └─────────────┘
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Teacher   │────▶│    Room     │────▶│   Student   │────▶│Participation│
+│             │     │             │     │             │     │             │
+│ id          │     │ id          │     │ id          │     │ id          │
+│ name        │     │ code        │     │ name        │     │ studentId   │
+│ email       │     │ name        │     │ roomId      │     │ roomId      │
+│ password    │     │ teacherId   │     │ totalPoints │     │ sessionId   │
+│ createdAt   │     │ isActive    │     │ isOnline    │     │ points      │
+│ updatedAt   │     │ createdAt   │     │ lastActive  │     │ status      │
+└─────────────┘     └─────────────┘     └─────────────┘     │ submittedAt │
+                           │                                  │ approvedAt  │
+                           ▼                                  │ rejectedAt  │
+                    ┌─────────────┐                         └─────────────┘
+                    │   Session   │
+                    │             │
+                    │ id          │
+                    │ name        │
+                    │ roomId      │
+                    │ isActive    │
+                    │ createdAt   │
+                    │ endedAt     │
+                    └─────────────┘
 ```
 
-### Schema Details
+### Enhanced Schema Details
 
-#### Room Table
+#### Teacher Table (Updated)
+```sql
+CREATE TABLE Teacher (
+  id              String    PRIMARY KEY DEFAULT cuid()
+  name            String    NOT NULL
+  email           String    UNIQUE NOT NULL
+  password        String    NOT NULL  -- bcrypt hashed password
+  createdAt       DateTime  DEFAULT now()
+  updatedAt       DateTime  DEFAULT now()
+  
+  -- Relations
+  rooms           Room[]
+  
+  -- Indexes
+  INDEX idx_teacher_email (email)
+)
+```
+
+#### Room Table (Enhanced)
 ```sql
 CREATE TABLE Room (
-  id              String    PRIMARY KEY
-  roomCode        String    UNIQUE NOT NULL
+  id              String    PRIMARY KEY DEFAULT cuid()
+  code            String    UNIQUE NOT NULL @db.VarChar(6)
   name            String    NOT NULL
+  description     String?
+  teacherId       String    NOT NULL FOREIGN KEY → Teacher.id
   isActive        Boolean   DEFAULT true
   createdAt       DateTime  DEFAULT now()
   updatedAt       DateTime  DEFAULT now()
   lastActivityAt  DateTime  DEFAULT now()
+  
+  -- Relations
+  teacher         Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   students        Student[]
-  submissions     Submission[]
-  resetHistory    ResetHistory[]
+  sessions        Session[]
+  participations  Participation[]
+  
+  -- Indexes
+  INDEX idx_room_code (code)
+  INDEX idx_room_teacher (teacherId, isActive)
+  INDEX idx_room_activity (lastActivityAt DESC) WHERE isActive = true
 )
 ```
 
 #### Student Table
 ```sql
 CREATE TABLE Student (
-  id          String    PRIMARY KEY
+  id          String    PRIMARY KEY DEFAULT cuid()
   name        String    NOT NULL
-  roomId      String    FOREIGN KEY → Room.id
+  roomId      String    NOT NULL FOREIGN KEY → Room.id
   totalPoints Int       DEFAULT 0
   isOnline    Boolean   DEFAULT false
   lastActive  DateTime  DEFAULT now()
-  submissions Submission[]
+  
+  -- Relations
+  room            Room            @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  participations  Participation[]
+  
+  -- Constraints
+  UNIQUE(name, roomId)  -- Unique name per room
+  
+  -- Indexes
+  INDEX idx_student_room (roomId, totalPoints DESC, name)
+  INDEX idx_student_activity (lastActive DESC)
 )
 ```
 
-#### Submission Table
+#### Session Table
 ```sql
-CREATE TABLE Submission (
-  id          String           PRIMARY KEY
-  studentId   String           FOREIGN KEY → Student.id
-  roomId      String           FOREIGN KEY → Room.id
-  points      Int              NOT NULL (1-3)
-  status      SubmissionStatus DEFAULT 'PENDING'
-  submittedAt DateTime         DEFAULT now()
+CREATE TABLE Session (
+  id          String    PRIMARY KEY DEFAULT cuid()
+  name        String    NOT NULL
+  roomId      String    NOT NULL FOREIGN KEY → Room.id
+  isActive    Boolean   DEFAULT true
+  createdAt   DateTime  DEFAULT now()
+  endedAt     DateTime?
+  
+  -- Relations
+  room            Room            @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  participations  Participation[]
+  
+  -- Indexes
+  INDEX idx_session_room (roomId, isActive)
+  INDEX idx_session_active (isActive, createdAt DESC)
+)
+```
+
+#### Participation Table
+```sql
+CREATE TABLE Participation (
+  id          String                PRIMARY KEY DEFAULT cuid()
+  studentId   String                NOT NULL FOREIGN KEY → Student.id
+  roomId      String                NOT NULL FOREIGN KEY → Room.id
+  sessionId   String                NOT NULL FOREIGN KEY → Session.id
+  points      Int                   NOT NULL CHECK (points >= 1 AND points <= 3)
+  status      ParticipationStatus   DEFAULT 'PENDING'
+  submittedAt DateTime              DEFAULT now()
   approvedAt  DateTime?
   rejectedAt  DateTime?
+  
+  -- Relations
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  room        Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  session     Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  -- Indexes
+  INDEX idx_participation_pending (status, roomId, submittedAt) WHERE status = 'PENDING'
+  INDEX idx_participation_student (studentId, status, submittedAt DESC)
+  INDEX idx_participation_session (sessionId, status)
 )
 
-ENUM SubmissionStatus {
+ENUM ParticipationStatus {
   PENDING
   APPROVED
   REJECTED
@@ -194,172 +410,431 @@ ENUM SubmissionStatus {
 
 ### Database Optimizations
 
-**Indexing Strategy**
+**Enhanced Indexing Strategy**
 ```sql
--- High-frequency lookups
-CREATE INDEX idx_room_code ON Room(roomCode);
-CREATE INDEX idx_student_room ON Student(roomId);
-CREATE INDEX idx_submission_status ON Submission(status, submittedAt);
+-- High-frequency authentication queries
+CREATE INDEX CONCURRENTLY idx_teacher_email_password 
+ON teachers (email) WHERE password IS NOT NULL;
 
--- Real-time queries
-CREATE INDEX idx_active_rooms ON Room(isActive, lastActivityAt);
-CREATE INDEX idx_pending_submissions ON Submission(status, roomId) 
-  WHERE status = 'PENDING';
+-- Room management queries
+CREATE INDEX CONCURRENTLY idx_room_teacher_active 
+ON rooms (teacher_id, is_active, last_activity_at DESC);
+
+-- Student roster queries with points
+CREATE INDEX CONCURRENTLY idx_student_room_points 
+ON students (room_id, total_points DESC, name ASC);
+
+-- Pending submissions queue
+CREATE INDEX CONCURRENTLY idx_participation_queue 
+ON participations (room_id, status, submitted_at ASC) 
+WHERE status = 'PENDING';
+
+-- Session activity tracking
+CREATE INDEX CONCURRENTLY idx_session_activity 
+ON sessions (room_id, is_active, created_at DESC);
 ```
 
-**Query Optimization**
-- Room validation: Single query with room code index
-- Roster updates: Batch student queries with room filter
-- Approval queue: Filtered pending submissions with time ordering
-- Statistics: Aggregated queries with proper indexing
-
-## Real-Time Communication
-
-### WebSocket Connection Management
-
+**Query Optimization Examples**
 ```typescript
-// Connection lifecycle
-class SocketManager {
-  // Teacher connections: room management and approvals
-  teacherConnections: Map<string, Socket> = new Map()
-  
-  // Student connections: submissions and status updates
-  studentConnections: Map<string, Socket> = new Map()
-  
-  // Room-specific channels for isolated updates
-  roomChannels: Map<string, Set<Socket>> = new Map()
+// Teacher dashboard with room statistics
+const getTeacherDashboard = async (teacherId: string) => {
+  return await prisma.teacher.findUnique({
+    where: { id: teacherId },
+    include: {
+      rooms: {
+        include: {
+          _count: {
+            select: {
+              students: true,
+              participations: { where: { status: 'APPROVED' } },
+              sessions: true
+            }
+          }
+        },
+        orderBy: { lastActivityAt: 'desc' }
+      }
+    }
+  })
+}
+
+// Room deletion with cascade information
+const getRoomDeletionInfo = async (roomId: string) => {
+  return await prisma.room.findUnique({
+    where: { id: roomId },
+    include: {
+      _count: {
+        select: {
+          students: true,
+          participations: true,
+          sessions: true
+        }
+      }
+    }
+  })
+}
+
+// CSV student upload with duplicate checking
+const uploadStudentsToRoom = async (roomId: string, studentNames: string[]) => {
+  return await prisma.$transaction(async (tx) => {
+    // Check existing students
+    const existing = await tx.student.findMany({
+      where: { roomId },
+      select: { name: true }
+    })
+    
+    const existingNames = new Set(existing.map(s => s.name))
+    const newNames = studentNames.filter(name => !existingNames.has(name))
+    
+    // Create new students
+    if (newNames.length > 0) {
+      await tx.student.createMany({
+        data: newNames.map(name => ({ name, roomId })),
+        skipDuplicates: true
+      })
+    }
+    
+    return {
+      studentsAdded: newNames.length,
+      duplicatesSkipped: studentNames.length - newNames.length
+    }
+  })
 }
 ```
 
-### Event Broadcasting Strategy
-
-**Room-Scoped Events**
-- All clients in a room receive roster updates
-- Only teacher connections receive approval queue updates
-- Student-specific events sent to individual connections
-
-**Performance Considerations**
-- Maximum 100 connections per room (30 students + 70 observers)
-- Heartbeat mechanism every 30 seconds
-- Automatic reconnection with exponential backoff
-- Connection pooling and cleanup on disconnect
-
 ## Security Architecture
 
-### Access Control Model
+### Enhanced Authentication Model
 
-**Room-Based Security**
-1. **Public Access**: Landing pages and documentation
-2. **Room Access**: Valid room code required for entry
-3. **Teacher Access**: Room creation and management
-4. **Student Access**: Submission and status viewing only
-
-### Data Validation Pipeline
-
+**Password Security**
 ```typescript
-// Input validation flow
-Request → Rate Limiting → Schema Validation → Business Logic → Database
+// Password hashing configuration
+const BCRYPT_ROUNDS = 10;  // Industry standard
+
+// Password validation rules
+const passwordValidation = {
+  minLength: 6,
+  requireUppercase: false,  // Keep simple for educational use
+  requireNumbers: false,
+  requireSpecialChars: false,
+  maxLength: 128
+}
+
+// Session management
+const sessionConfig = {
+  storage: 'localStorage',  // Client-side for simplicity
+  timeout: 24 * 60 * 60 * 1000,  // 24 hours
+  renewOnActivity: true
+}
 ```
 
-**Validation Layers**
-- Rate limiting: 10 requests/minute per IP for submissions
-- Schema validation: Zod schemas for all API inputs
-- Business logic: Room status, student enrollment checks
-- Database constraints: Foreign keys, unique constraints
+**Authorization Layers**
+1. **Public Access**: Landing pages, documentation
+2. **Room Access**: Valid room code required for student entry
+3. **Teacher Access**: Email/password authentication for room management
+4. **Owner Access**: Teachers can only manage their own rooms
 
-### Security Headers
+### Input Validation Pipeline
+
+```typescript
+// Enhanced validation with Zod schemas
+const schemas = {
+  teacherAuth: z.object({
+    email: z.string().email('Invalid email format'),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+    name: z.string().min(1).max(100).optional()
+  }),
+  
+  roomCreation: z.object({
+    name: z.string().min(1).max(100),
+    description: z.string().max(500).optional(),
+    csvFile: z.instanceof(File).refine(
+      file => file.type === 'text/csv' || file.name.endsWith('.csv'),
+      'Must be a CSV file'
+    )
+  }),
+  
+  studentSubmission: z.object({
+    roomCode: z.string().regex(/^[A-Z0-9]{6}$/, 'Invalid room code'),
+    studentId: z.string().cuid('Invalid student ID'),
+    points: z.number().int().min(1).max(3)
+  })
+}
+```
+
+### Security Headers and Middleware
 
 ```typescript
 // Next.js security configuration
 const securityHeaders = [
-  { key: 'X-DNS-Prefetch-Control', value: 'on' },
-  { key: 'X-XSS-Protection', value: '1; mode=block' },
-  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-  { key: 'X-Content-Type-Options', value: 'nosniff' },
-  { key: 'Content-Security-Policy', value: cspHeader }
+  {
+    key: 'X-DNS-Prefetch-Control',
+    value: 'on'
+  },
+  {
+    key: 'X-XSS-Protection',
+    value: '1; mode=block'
+  },
+  {
+    key: 'X-Frame-Options',
+    value: 'SAMEORIGIN'
+  },
+  {
+    key: 'X-Content-Type-Options',
+    value: 'nosniff'
+  },
+  {
+    key: 'Content-Security-Policy',
+    value: `
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval';
+      style-src 'self' 'unsafe-inline';
+      img-src 'self' data: https:;
+      font-src 'self';
+      connect-src 'self' ws: wss:;
+    `.replace(/\s{2,}/g, ' ').trim()
+  }
 ]
 ```
 
 ## Performance Architecture
 
-### Frontend Performance
+### Frontend Performance Optimizations
 
-**React Optimization**
-- Component memoization with `React.memo`
-- State management with `useState` and `useReducer`
-- Virtual scrolling for large student rosters
-- Image optimization with Next.js Image component
+**React/Next.js Optimizations**
+```typescript
+// Component memoization strategy
+const StudentList = React.memo(({ students }: StudentListProps) => {
+  return useMemo(() => 
+    students.map(student => <StudentRow key={student.id} student={student} />),
+    [students]
+  )
+})
+
+// Virtual scrolling for large rosters (50+ students)
+const VirtualizedStudentRoster = ({ students }: { students: Student[] }) => {
+  return (
+    <FixedSizeList
+      height={400}
+      itemCount={students.length}
+      itemSize={60}
+    >
+      {({ index, style }) => (
+        <div style={style}>
+          <StudentRow student={students[index]} />
+        </div>
+      )}
+    </FixedSizeList>
+  )
+}
+```
 
 **Bundle Optimization**
-- Tree shaking for unused code elimination
-- Dynamic imports for code splitting
-- Static asset optimization and caching
-- Service worker for offline capability
+```typescript
+// Dynamic imports for code splitting
+const TeacherDashboard = dynamic(() => import('./components/TeacherDashboard'), {
+  loading: () => <LoadingSpinner />,
+  ssr: false
+})
+
+const PresentationView = dynamic(() => import('./components/PresentationView'), {
+  loading: () => <LoadingSpinner />
+})
+```
 
 ### Backend Performance
 
-**Database Performance**
-- Connection pooling (max 20 connections)
-- Query optimization with proper indexing
-- Batch operations for bulk updates
-- Read replicas for scaling read-heavy operations
+**Database Connection Management**
+```typescript
+// Prisma configuration for production
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL + '?connection_limit=20&pool_timeout=20'
+    }
+  },
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error']
+})
+```
 
 **Caching Strategy**
-- Redis for session data and active room state
-- Browser caching for static assets
-- API response caching for room metadata
-- WebSocket connection state caching
+```typescript
+// Memory cache for frequently accessed data
+class MemoryCache {
+  private cache = new Map<string, { data: any, expiry: number }>()
+  
+  set(key: string, data: any, ttlMs: number = 300000) { // 5 minutes default
+    this.cache.set(key, {
+      data,
+      expiry: Date.now() + ttlMs
+    })
+  }
+  
+  get(key: string) {
+    const cached = this.cache.get(key)
+    if (cached && cached.expiry > Date.now()) {
+      return cached.data
+    }
+    this.cache.delete(key)
+    return null
+  }
+}
+
+// Usage for room data
+const roomCache = new MemoryCache()
+const getCachedRoomData = async (roomCode: string) => {
+  const cached = roomCache.get(`room:${roomCode}`)
+  if (cached) return cached
+  
+  const roomData = await prisma.room.findUnique({
+    where: { code: roomCode },
+    include: { students: true, sessions: { where: { isActive: true } } }
+  })
+  
+  roomCache.set(`room:${roomCode}`, roomData, 120000) // 2 minutes
+  return roomData
+}
+```
 
 ### Scalability Considerations
 
-**Horizontal Scaling**
-- Stateless API design for load balancing
-- WebSocket connection sharing across instances
-- Database sharding by room code prefix
-- CDN for static asset delivery
+**Load Balancing Strategy**
+```typescript
+// Stateless API design for horizontal scaling
+interface ServerConfig {
+  maxConcurrentRooms: 100
+  maxStudentsPerRoom: 50
+  maxConcurrentConnections: 2000
+  requestRateLimits: {
+    auth: '10/minute'
+    submission: '20/minute'
+    roomCreation: '5/hour'
+  }
+}
+```
 
-**Resource Management**
-- Memory-efficient data structures
-- Garbage collection optimization
-- Connection pooling and cleanup
-- Background job processing for heavy operations
+**WebSocket Scaling**
+```typescript
+// Connection management for multiple server instances
+class ConnectionManager {
+  private connections = new Map<string, Set<WebSocket>>()
+  
+  addToRoom(roomCode: string, ws: WebSocket) {
+    if (!this.connections.has(roomCode)) {
+      this.connections.set(roomCode, new Set())
+    }
+    this.connections.get(roomCode)?.add(ws)
+  }
+  
+  broadcastToRoom(roomCode: string, data: any) {
+    const roomConnections = this.connections.get(roomCode)
+    if (roomConnections) {
+      roomConnections.forEach(ws => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify(data))
+        }
+      })
+    }
+  }
+  
+  cleanup() {
+    // Remove stale connections every 5 minutes
+    setInterval(() => {
+      this.connections.forEach((connections, roomCode) => {
+        connections.forEach(ws => {
+          if (ws.readyState !== WebSocket.OPEN) {
+            connections.delete(ws)
+          }
+        })
+        if (connections.size === 0) {
+          this.connections.delete(roomCode)
+        }
+      })
+    }, 300000)
+  }
+}
+```
 
 ## Monitoring and Observability
 
-### Metrics Collection
+### Application Metrics
 
-**Application Metrics**
-- Active rooms and concurrent users
-- Submission rates and approval times
-- WebSocket connection stability
-- API response times and error rates
-
-**Infrastructure Metrics**
-- Database query performance
-- Memory and CPU utilization
-- Network bandwidth usage
-- Error rates and availability
-
-### Logging Strategy
-
-**Structured Logging**
+**Key Performance Indicators**
 ```typescript
-const logger = {
-  info: (message: string, context: object) => {},
-  warn: (message: string, context: object) => {},
-  error: (message: string, error: Error, context: object) => {}
+interface ApplicationMetrics {
+  // User engagement
+  activeRooms: number
+  concurrentUsers: number
+  dailyActiveTeachers: number
+  
+  // System performance
+  averageResponseTime: number
+  errorRate: number
+  websocketConnections: number
+  
+  // Business metrics
+  participationsPerHour: number
+  approvalRate: number
+  csvUploadSuccess: number
+  
+  // Security metrics
+  failedLoginAttempts: number
+  rateLimitHits: number
+  suspiciousActivity: number
 }
-
-// Usage examples
-logger.info('Room created', { roomCode, teacherId, studentCount })
-logger.error('Submission failed', error, { roomCode, studentId })
 ```
 
-**Log Categories**
-- User actions: Room creation, submissions, approvals
-- System events: Connections, disconnections, errors
-- Performance: Query times, response latencies
-- Security: Failed validations, rate limit hits
+**Logging Strategy**
+```typescript
+import winston from 'winston'
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({ 
+      filename: 'logs/error.log', 
+      level: 'error',
+      maxsize: 5242880, // 5MB
+      maxFiles: 5
+    }),
+    new winston.transports.File({ 
+      filename: 'logs/combined.log',
+      maxsize: 5242880,
+      maxFiles: 5
+    }),
+    ...(process.env.NODE_ENV !== 'production' ? [
+      new winston.transports.Console({
+        format: winston.format.simple()
+      })
+    ] : [])
+  ]
+})
+
+// Usage examples
+logger.info('Teacher registered', {
+  teacherId: teacher.id,
+  email: teacher.email,
+  timestamp: new Date().toISOString()
+})
+
+logger.warn('Room deletion attempted', {
+  roomId,
+  teacherId,
+  studentsAffected: room._count.students,
+  participationsAffected: room._count.participations
+})
+
+logger.error('CSV upload failed', error, {
+  teacherId,
+  roomId,
+  fileName: file.name,
+  fileSize: file.size
+})
+```
 
 ## Deployment Architecture
 
@@ -369,27 +844,31 @@ logger.error('Submission failed', error, { roomCode, studentId })
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Load Balancer │────│   Web Servers   │────│    Database     │
 │   (nginx/ALB)   │    │  (Node.js x3)   │    │  (PostgreSQL)   │
+│   SSL/HTTPS     │    │   Next.js App   │    │   + Replicas    │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          ▼                       ▼                       ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Static CDN    │    │   Redis Cache   │    │   File Storage  │
-│   (CloudFront)  │    │  (Sessions)     │    │   (S3/Local)    │
+│ (CloudFront/CF) │    │  (Sessions)     │    │   (S3/GCS)     │
+│  Static Assets  │    │   Rate Limits   │    │  CSV Uploads    │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
 ### Infrastructure Requirements
 
 **Minimum Production Setup**
-- 2 CPU cores, 4GB RAM per web server instance
-- PostgreSQL with 2 CPU cores, 8GB RAM
-- Redis with 1GB RAM for session storage
-- Load balancer with SSL termination
+- **Web Servers**: 2 CPU cores, 4GB RAM per instance
+- **Database**: PostgreSQL 14+ with 4 CPU cores, 8GB RAM
+- **Redis Cache**: 1GB RAM for session storage and rate limiting
+- **Load Balancer**: SSL termination, health checks
+- **File Storage**: S3-compatible storage for CSV uploads
 
 **Recommended Production Setup**
-- 3+ web server instances for high availability
-- Database with read replicas and automated backups
-- Redis cluster for session reliability
-- Monitoring and alerting infrastructure
+- **Web Servers**: 3+ instances behind load balancer
+- **Database**: Primary + read replica, automated backups
+- **Redis Cluster**: High availability configuration
+- **Monitoring**: Application and infrastructure monitoring
+- **CDN**: Global content delivery for static assets
 
-This architecture supports the PRD requirements while maintaining scalability, security, and performance for classroom environments with up to 50 concurrent rooms and 1,500+ simultaneous users.
+This architecture supports the enhanced application requirements while maintaining scalability, security, and performance for classroom environments with 50+ concurrent rooms and 2,000+ simultaneous users.
