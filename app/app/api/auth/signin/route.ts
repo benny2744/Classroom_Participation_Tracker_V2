@@ -1,6 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 
 export async function POST(request: Request) {
   try {
@@ -20,26 +21,30 @@ export async function POST(request: Request) {
 
     if (!teacher) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: 'Invalid email or password' },
         { status: 400 }
       );
     }
 
-    // In a real app, we'd verify the password here
-    // For simplicity, we'll just return success
-
-    // Set a simple redirect response
-    const response = NextResponse.redirect(new URL('/teacher', request.url));
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, teacher.password);
     
-    // Set a simple session cookie
-    response.cookies.set('teacher-session', teacher.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7 // 7 days
-    });
+    if (!isPasswordValid) {
+      return NextResponse.json(
+        { error: 'Invalid email or password' },
+        { status: 400 }
+      );
+    }
 
-    return response;
+    // Return user data (without password)
+    return NextResponse.json({ 
+      success: true, 
+      user: { 
+        id: teacher.id, 
+        name: teacher.name, 
+        email: teacher.email 
+      } 
+    });
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(

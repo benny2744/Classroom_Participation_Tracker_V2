@@ -1,6 +1,7 @@
 
 import { PrismaClient, ParticipationStatus } from '@prisma/client';
 import { generateRoomCode } from '../lib/room-utils';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -8,12 +9,16 @@ async function main() {
   console.log('🌱 Starting database seeding...');
 
   // Create test teachers
+  const teacher1Password = await bcrypt.hash('password123', 10);
+  const teacher2Password = await bcrypt.hash('password456', 10);
+  
   const teacher1 = await prisma.teacher.upsert({
     where: { email: 'dr.smith@university.edu' },
     update: {},
     create: {
       name: 'Dr. Sarah Smith',
       email: 'dr.smith@university.edu',
+      password: teacher1Password,
     },
   });
 
@@ -23,6 +28,7 @@ async function main() {
     create: {
       name: 'Prof. Michael Johnson',
       email: 'prof.johnson@university.edu',
+      password: teacher2Password,
     },
   });
 

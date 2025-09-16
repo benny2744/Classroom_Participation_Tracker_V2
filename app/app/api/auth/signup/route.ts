@@ -14,6 +14,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: 'Password must be at least 6 characters long' },
+        { status: 400 }
+      );
+    }
+
     // Check if user already exists
     const existingTeacher = await prisma.teacher.findUnique({
       where: { email }
@@ -29,11 +36,12 @@ export async function POST(request: Request) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create teacher (password isn't stored in the current schema, but we'll create the user)
+    // Create teacher with hashed password
     const teacher = await prisma.teacher.create({
       data: {
         name,
-        email
+        email,
+        password: hashedPassword
       }
     });
 

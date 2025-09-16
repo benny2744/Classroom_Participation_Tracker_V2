@@ -1,26 +1,32 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 
 export const dynamic = 'force-dynamic';
 
-// Create a new teacher
+// Create a new teacher (deprecated - use /api/auth/signup instead)
 export async function POST(request: Request) {
   try {
-    const { name, email } = await request.json();
+    const { name, email, password } = await request.json();
     
-    if (!name || !email) {
+    if (!name || !email || !password) {
       return NextResponse.json(
-        { error: 'Name and email are required' },
+        { error: 'Name, email, and password are required' },
         { status: 400 }
       );
     }
 
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const teacher = await prisma.teacher.create({
-      data: { name, email }
+      data: { name, email, password: hashedPassword }
     });
 
-    return NextResponse.json(teacher);
+    // Return teacher without password
+    const { password: _, ...teacherWithoutPassword } = teacher;
+    return NextResponse.json(teacherWithoutPassword);
   } catch (error: any) {
     if (error?.code === 'P2002') {
       return NextResponse.json(
