@@ -44,12 +44,12 @@ The Classroom Participation Tracker is built as a modern web application with re
 
 **1. Student Interface (`/student`)**
 - `StudentLanding`: Room code entry and validation
-- `StudentParticipation`: Point submission interface
+- `StudentParticipation`: Point submission interface with columned student list and radio button selection
 - `StudentStatus`: Real-time feedback and current status
 
 **2. Teacher Dashboard (`/teacher`)**
 - `TeacherDashboard`: Room management and overview
-- `RoomCreation`: New room setup and configuration
+- `RoomCreation`: New room setup with one-column CSV student roster upload
 - `RoomManagement`: Active session controls and settings
 
 **3. Presentation View (`/teacher/[roomCode]/presentation`)**
@@ -78,7 +78,7 @@ The Classroom Participation Tracker is built as a modern web application with re
 ```
 /api/
 ├── rooms/
-│   ├── create              # POST: Create new room
+│   ├── create              # POST: Create new room with CSV upload
 │   ├── validate            # POST: Validate room code
 │   ├── [roomCode]/
 │   │   ├── activate        # POST: Toggle room status
@@ -86,7 +86,8 @@ The Classroom Participation Tracker is built as a modern web application with re
 │   │   ├── submissions     # GET: Pending approvals
 │   │   ├── approve         # POST: Approve submission
 │   │   ├── reject          # POST: Reject submission
-│   │   └── reset           # POST: Reset operations
+│   │   ├── reset           # POST: Reset operations
+│   │   └── upload-csv      # POST: Upload student CSV file
 ├── students/
 │   ├── join                # POST: Join room session
 │   ├── submit              # POST: Submit points

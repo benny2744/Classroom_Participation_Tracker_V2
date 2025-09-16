@@ -65,7 +65,7 @@ The Classroom Participation Tracker is an online platform that solves the challe
 #### 1. Creating a Room
 - Navigate to `/teacher`
 - Click "Create New Room"
-- Enter room name and select class roster
+- Enter room name and upload one-column CSV file with student names
 - Share the generated 6-character room code with students
 
 #### 2. Managing Sessions
@@ -90,10 +90,10 @@ The Classroom Participation Tracker is an online platform that solves the challe
 #### 1. Joining a Room
 - Go to `/student`
 - Enter the 6-character room code
-- Select your name from the class roster
+- Select your name from the columned student list using radio buttons
 
 #### 2. Submitting Points
-- Choose point amount (1, 2, or 3)
+- Choose point amount (1, 2, or 3) from the dropdown at the top
 - Click submit
 - Wait for teacher approval
 - See your updated points in real-time

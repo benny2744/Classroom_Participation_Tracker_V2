@@ -16,7 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Real-Time Synchronization**: WebSocket-based live updates across all connected devices
 
 #### Student Experience
-- **Simplified Participation Interface**: One-click point submission (1-3 points) with minimal friction
+- **Simplified Participation Interface**: Point selection dropdown at top, columned student list with radio button selection, one-click submission
+- **Intuitive Name Selection**: Multi-column student roster with bubble selectors for single-select name choosing
 - **Real-Time Feedback**: Instant status updates on submission approval/rejection
 - **Mobile-Optimized Design**: Responsive interface optimized for smartphones and tablets
 - **Session Status Visibility**: Clear indication of active/inactive room status
@@ -24,8 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 #### Teacher Dashboard
 - **Room Management**: Create, activate, and deactivate rooms with full session control
 - **Enhanced Presentation View**: Dual-panel layout with full class roster and approval queue
-  - 70% screen space for student roster with live point totals
-  - 30% fixed approval interface (student name, points requested, yes/no buttons)
+  - 85% screen space for student roster with live point totals
+  - 15% compact approval interface (student name, points requested, yes/no buttons)
   - Color-coded point display system (5-tier visualization)
   - Real-time activity indicators and sorting options
 
@@ -46,7 +47,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 #### Data Management
 - **CSV Export**: Export participation data for gradebook integration
-- **Student Roster Import**: Bulk import student lists for new rooms
+- **Student Roster Import**: Upload one-column CSV files with student names for new rooms
 - **Session Persistence**: Automatic data saving and recovery
 - **Activity Logging**: Comprehensive tracking of all student and teacher actions
 

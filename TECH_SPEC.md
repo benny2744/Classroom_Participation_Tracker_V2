@@ -39,6 +39,8 @@ interface StudentLandingProps {
 
 // Key features:
 // - Room code input with validation
+// - Columned student list with radio button selection
+// - Point selection dropdown at top of interface
 // - Real-time room status checking
 // - Error handling and user feedback
 // - Mobile-optimized input interface
@@ -50,10 +52,11 @@ interface TeacherDashboardProps {
   rooms: Room[]
   onRoomCreate: (roomData: RoomCreationData) => void
   onRoomToggle: (roomId: string, isActive: boolean) => void
+  onCSVUpload: (file: File) => Promise<Student[]>
 }
 
 // Key features:
-// - Room creation with student roster import
+// - Room creation with one-column CSV student roster upload
 // - Active room management and monitoring
 // - Quick access to presentation mode
 // - Room settings and configuration
@@ -70,8 +73,8 @@ interface PresentationViewProps {
 }
 
 // Layout structure:
-// - 70% student roster with real-time points
-// - 30% approval queue (fixed position)
+// - 85% student roster with real-time points
+// - 15% approval queue (fixed position, compact design)
 // - Responsive breakpoints for different screen sizes
 // - Keyboard shortcuts for quick approvals
 ```
@@ -193,10 +196,10 @@ const useStudentState = (studentId: string) => {
 
 **POST /api/rooms/create**
 ```typescript
-// Request
+// Request (FormData for CSV upload)
 interface CreateRoomRequest {
   name: string
-  students: Array<{ name: string }>
+  csvFile: File // One-column CSV with student names
 }
 
 // Response
@@ -209,9 +212,10 @@ interface CreateRoomResponse {
 // Validation
 const createRoomSchema = z.object({
   name: z.string().min(1).max(100),
-  students: z.array(z.object({
-    name: z.string().min(1).max(50)
-  })).max(50)
+  csvFile: z.instanceof(File).refine(
+    file => file.type === 'text/csv' || file.name.endsWith('.csv'),
+    'File must be a CSV'
+  )
 })
 ```
 
