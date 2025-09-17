@@ -20,7 +20,9 @@ import {
   Maximize2,
   ArrowLeft,
   Trophy,
-  RefreshCw
+  RefreshCw,
+  Plus,
+  Minus
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -61,6 +63,8 @@ export default function PresentationView({ params }: { params: { id: string } })
   const [processingApprovals, setProcessingApprovals] = useState<Set<string>>(new Set());
   const [undoData, setUndoData] = useState<any>(null);
   const [showFullscreen, setShowFullscreen] = useState(false);
+  const [processingPointAdjustments, setProcessingPointAdjustments] = useState<Set<string>>(new Set());
+  const [processingBulkAdjustment, setProcessingBulkAdjustment] = useState(false);
 
   useEffect(() => {
     fetchAllData();
@@ -226,6 +230,62 @@ export default function PresentationView({ params }: { params: { id: string } })
       }
     } catch (error) {
       toast.error('Failed to undo reset');
+    }
+  };
+
+  const handlePointAdjustment = async (studentId: string, studentName: string, action: 'add' | 'subtract') => {
+    setProcessingPointAdjustments(prev => new Set(prev).add(studentId));
+
+    try {
+      const response = await fetch(`/api/students/${studentId}/points`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(`${action === 'add' ? 'Added' : 'Subtracted'} 1 point ${action === 'add' ? 'to' : 'from'} ${studentName}`);
+        // Refresh data
+        await fetchAllData();
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || `Failed to ${action} point`);
+      }
+    } catch (error) {
+      toast.error(`Failed to ${action} point`);
+    } finally {
+      setProcessingPointAdjustments(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(studentId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleBulkPointAdjustment = async (action: 'add' | 'subtract') => {
+    setProcessingBulkAdjustment(true);
+
+    try {
+      const response = await fetch(`/api/rooms/${params.id}/bulk-points`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(`${action === 'add' ? 'Added' : 'Subtracted'} 1 point ${action === 'add' ? 'to' : 'from'} all ${data.studentsUpdated} students`);
+        // Refresh data
+        await fetchAllData();
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || `Failed to ${action} points for all students`);
+      }
+    } catch (error) {
+      toast.error(`Failed to ${action} points for all students`);
+    } finally {
+      setProcessingBulkAdjustment(false);
     }
   };
 
@@ -426,6 +486,29 @@ export default function PresentationView({ params }: { params: { id: string } })
                           <p className="text-lg font-bold text-blue-600">{student.totalPoints}</p>
                           <p className="text-xs text-gray-500">points</p>
                         </div>
+                        
+                        {/* Point Adjustment Buttons */}
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePointAdjustment(student.id, student.name, 'subtract')}
+                            disabled={processingPointAdjustments.has(student.id) || student.totalPoints <= 0}
+                            className="w-8 h-8 p-0 text-red-600 hover:bg-red-50 border-red-200"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePointAdjustment(student.id, student.name, 'add')}
+                            disabled={processingPointAdjustments.has(student.id)}
+                            className="w-8 h-8 p-0 text-green-600 hover:bg-green-50 border-green-200"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
+                        
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="outline" size="sm">
@@ -464,6 +547,33 @@ export default function PresentationView({ params }: { params: { id: string } })
               <Clock className="w-4 h-4" />
               Queue ({pendingParticipations.length})
             </h3>
+            
+            {/* Bulk Point Adjustment Buttons */}
+            <div className="space-y-2 mb-4 pb-3 border-b">
+              <p className="text-xs text-gray-600 font-medium">All Students:</p>
+              <div className="grid grid-cols-2 gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleBulkPointAdjustment('subtract')}
+                  disabled={processingBulkAdjustment || students.length === 0}
+                  className="text-red-600 hover:bg-red-50 border-red-200 text-xs px-2 py-1 h-auto"
+                >
+                  <Minus className="w-3 h-3 mr-1" />
+                  -1 All
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleBulkPointAdjustment('add')}
+                  disabled={processingBulkAdjustment || students.length === 0}
+                  className="text-green-600 hover:bg-green-50 border-green-200 text-xs px-2 py-1 h-auto"
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  +1 All
+                </Button>
+              </div>
+            </div>
           </div>
           
           <div className="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">

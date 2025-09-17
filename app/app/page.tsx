@@ -17,9 +17,25 @@ export default function HomePage() {
             Classroom Participation 
             <span className="text-blue-600 block">Tracker</span>
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
             Real-time participation tracking for engaging classroom experiences
           </p>
+          
+          {/* Prominent Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+            <Link href="/teacher">
+              <Button size="lg" className="w-full sm:w-auto px-8 py-4 text-lg">
+                <GraduationCap className="w-6 h-6 mr-3" />
+                Teacher Dashboard
+              </Button>
+            </Link>
+            <Link href="/student">
+              <Button variant="outline" size="lg" className="w-full sm:w-auto px-8 py-4 text-lg border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white">
+                <Users className="w-6 h-6 mr-3" />
+                Join as Student
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Feature Cards */}
@@ -82,21 +98,7 @@ export default function HomePage() {
           </Card>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link href="/student">
-            <Button size="lg" className="w-full sm:w-auto">
-              <Users className="w-5 h-5 mr-2" />
-              Join as Student
-            </Button>
-          </Link>
-          <Link href="/teacher">
-            <Button variant="outline" size="lg" className="w-full sm:w-auto">
-              <GraduationCap className="w-5 h-5 mr-2" />
-              Teacher Dashboard
-            </Button>
-          </Link>
-        </div>
+
       </div>
     </div>
   );
