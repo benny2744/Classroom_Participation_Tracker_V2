@@ -689,52 +689,63 @@ export default function TeacherDashboard() {
                   </div>
                   
                   {/* Stats */}
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="p-2 bg-blue-50 rounded">
-                      <p className="text-sm text-gray-600">Students</p>
-                      <p className="font-bold text-blue-600">{room._count.students}</p>
+                  <div className="grid grid-cols-3 gap-1 lg:gap-2 text-center">
+                    <div className="p-1 lg:p-2 bg-blue-50 rounded">
+                      <p className="text-xs lg:text-sm text-gray-600">
+                        <span className="hidden sm:inline">Students</span>
+                        <span className="sm:hidden">Std</span>
+                      </p>
+                      <p className="font-bold text-blue-600 text-sm lg:text-base">{room._count.students}</p>
                     </div>
-                    <div className="p-2 bg-green-50 rounded">
-                      <p className="text-sm text-gray-600">Sessions</p>
-                      <p className="font-bold text-green-600">{room._count.sessions}</p>
+                    <div className="p-1 lg:p-2 bg-green-50 rounded">
+                      <p className="text-xs lg:text-sm text-gray-600">
+                        <span className="hidden sm:inline">Sessions</span>
+                        <span className="sm:hidden">Sess</span>
+                      </p>
+                      <p className="font-bold text-green-600 text-sm lg:text-base">{room._count.sessions}</p>
                     </div>
-                    <div className="p-2 bg-purple-50 rounded">
-                      <p className="text-sm text-gray-600">Participations</p>
-                      <p className="font-bold text-purple-600">{room._count.participations}</p>
+                    <div className="p-1 lg:p-2 bg-purple-50 rounded">
+                      <p className="text-xs lg:text-sm text-gray-600">
+                        <span className="hidden sm:inline">Participations</span>
+                        <span className="sm:hidden">Part</span>
+                      </p>
+                      <p className="font-bold text-purple-600 text-sm lg:text-base">{room._count.participations}</p>
                     </div>
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
+                  <div className="space-y-1 lg:space-y-2">
+                    <div className="flex gap-1 lg:gap-2">
                       <Button 
                         variant="default"
                         size="sm"
-                        className="flex-1"
+                        className="flex-1 text-xs lg:text-sm px-2 lg:px-3 py-1 lg:py-2"
                         onClick={() => router.push(`/teacher/room/${room.id}/presentation`)}
                       >
-                        <BarChart3 className="w-4 h-4 mr-1" />
+                        <BarChart3 className="w-3 h-3 lg:w-4 lg:h-4 mr-1" />
                         Present
                       </Button>
                       <Button 
                         variant="outline"
                         size="sm"
+                        className="px-2 lg:px-3 py-1 lg:py-2"
                         onClick={() => router.push(`/teacher/room/${room.id}`)}
                       >
-                        <Settings className="w-4 h-4" />
+                        <Settings className="w-3 h-3 lg:w-4 lg:h-4" />
                       </Button>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 lg:gap-2">
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="flex-1"
+                            className="flex-1 text-xs lg:text-sm px-2 lg:px-3 py-1 lg:py-2"
                             onClick={() => setSelectedRoomForUpload(room.id)}
                           >
-                            <Upload className="w-4 h-4 mr-1" />
-                            Add Students
+                            <Upload className="w-3 h-3 lg:w-4 lg:h-4 mr-1" />
+                            <span className="hidden sm:inline">Add Students</span>
+                            <span className="sm:hidden">Add</span>
                           </Button>
                         </DialogTrigger>
                         <DialogContent>
@@ -802,9 +813,9 @@ export default function TeacherDashboard() {
                           <Button 
                             variant="outline" 
                             size="sm"
-                            className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
+                            className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50 px-2 lg:px-3 py-1 lg:py-2"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3 h-3 lg:w-4 lg:h-4" />
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>

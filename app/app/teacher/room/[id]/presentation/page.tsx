@@ -358,22 +358,24 @@ export default function PresentationView({ params }: { params: { id: string } })
       </div>
 
       {/* Main Content */}
-      <div className="flex h-[calc(100vh-80px)]">
-        {/* Class Roster - Left Panel (85% width) */}
-        <div className="flex-[85] p-6 overflow-y-auto">
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-80px)]">
+        {/* Class Roster - Left Panel */}
+        <div className="flex-1 lg:flex-[3] p-3 lg:p-6 overflow-y-auto">
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Class Roster ({students.length} students)
+              <h2 className="text-lg lg:text-xl font-semibold flex items-center gap-2">
+                <Users className="w-4 h-4 lg:w-5 lg:h-5" />
+                <span className="hidden sm:inline">Class Roster ({students.length} students)</span>
+                <span className="sm:hidden">Roster ({students.length})</span>
               </h2>
               
               {/* Reset Controls */}
-              <div className="flex gap-2">
+              <div className="flex gap-1 lg:gap-2">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      Reset Class
+                    <Button variant="outline" size="sm" className="text-xs lg:text-sm px-2 lg:px-3">
+                      <span className="hidden sm:inline">Reset Class</span>
+                      <span className="sm:hidden">Reset</span>
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -395,8 +397,9 @@ export default function PresentationView({ params }: { params: { id: string } })
 
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      New Session
+                    <Button variant="outline" size="sm" className="text-xs lg:text-sm px-2 lg:px-3">
+                      <span className="hidden sm:inline">New Session</span>
+                      <span className="sm:hidden">Session</span>
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -460,31 +463,36 @@ export default function PresentationView({ params }: { params: { id: string } })
             ) : (
               sortedStudents.map((student, index) => (
                 <Card key={student.id} className={`hover:shadow-md transition-shadow ${index < 3 ? 'border-l-4 border-l-yellow-400' : ''}`}>
-                  <CardContent className="py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full text-sm font-medium">
+                  <CardContent className="py-3 lg:py-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 lg:gap-3 min-w-0 flex-1">
+                        <div className="flex items-center justify-center w-6 h-6 lg:w-8 lg:h-8 bg-gray-100 rounded-full text-xs lg:text-sm font-medium flex-shrink-0">
                           {index + 1}
                         </div>
-                        <div>
-                          <p className="font-medium flex items-center gap-2">
-                            {student.name}
-                            {index < 3 && <Trophy className="w-4 h-4 text-yellow-500" />}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium flex items-center gap-1 lg:gap-2 text-sm lg:text-base truncate">
+                            <span className="truncate">{student.name}</span>
+                            {index < 3 && <Trophy className="w-3 h-3 lg:w-4 lg:h-4 text-yellow-500 flex-shrink-0" />}
                           </p>
-                          <p className="text-sm text-gray-600">
-                            {student.participationsCount} participations
+                          <p className="text-xs lg:text-sm text-gray-600">
+                            <span className="hidden sm:inline">{student.participationsCount} participations</span>
+                            <span className="sm:hidden">{student.participationsCount}p</span>
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1 lg:gap-3 flex-shrink-0">
                         {student.pendingCount > 0 && (
-                          <Badge variant="outline">
-                            {student.pendingCount} pending
+                          <Badge variant="outline" className="text-xs px-1 lg:px-2">
+                            <span className="hidden sm:inline">{student.pendingCount} pending</span>
+                            <span className="sm:hidden">{student.pendingCount}p</span>
                           </Badge>
                         )}
                         <div className="text-right">
-                          <p className="text-lg font-bold text-blue-600">{student.totalPoints}</p>
-                          <p className="text-xs text-gray-500">points</p>
+                          <p className="text-base lg:text-lg font-bold text-blue-600">{student.totalPoints}</p>
+                          <p className="text-xs text-gray-500">
+                            <span className="hidden sm:inline">points</span>
+                            <span className="sm:hidden">pts</span>
+                          </p>
                         </div>
                         
                         {/* Point Adjustment Buttons */}
@@ -494,25 +502,25 @@ export default function PresentationView({ params }: { params: { id: string } })
                             size="sm"
                             onClick={() => handlePointAdjustment(student.id, student.name, 'subtract')}
                             disabled={processingPointAdjustments.has(student.id) || student.totalPoints <= 0}
-                            className="w-8 h-8 p-0 text-red-600 hover:bg-red-50 border-red-200"
+                            className="w-6 h-6 lg:w-8 lg:h-8 p-0 text-red-600 hover:bg-red-50 border-red-200"
                           >
-                            <Minus className="w-3 h-3" />
+                            <Minus className="w-2 h-2 lg:w-3 lg:h-3" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handlePointAdjustment(student.id, student.name, 'add')}
                             disabled={processingPointAdjustments.has(student.id)}
-                            className="w-8 h-8 p-0 text-green-600 hover:bg-green-50 border-green-200"
+                            className="w-6 h-6 lg:w-8 lg:h-8 p-0 text-green-600 hover:bg-green-50 border-green-200"
                           >
-                            <Plus className="w-3 h-3" />
+                            <Plus className="w-2 h-2 lg:w-3 lg:h-3" />
                           </Button>
                         </div>
                         
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <RotateCcw className="w-4 h-4" />
+                            <Button variant="outline" size="sm" className="w-6 h-6 lg:w-8 lg:h-8 p-0">
+                              <RotateCcw className="w-2 h-2 lg:w-3 lg:h-3" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -540,37 +548,43 @@ export default function PresentationView({ params }: { params: { id: string } })
           </div>
         </div>
 
-        {/* Approval Queue - Right Panel (15% width, compact) */}
-        <div className="flex-[15] bg-white border-l p-4">
+        {/* Approval Queue - Right Panel */}
+        <div className="lg:flex-1 lg:max-w-xs bg-white border-t lg:border-t-0 lg:border-l p-3 lg:p-4 lg:min-h-0">
           <div className="sticky top-0 bg-white pb-3">
-            <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
-              <Clock className="w-4 h-4" />
-              Queue ({pendingParticipations.length})
+            <h3 className="text-base lg:text-lg font-semibold flex items-center gap-1 lg:gap-2 mb-3">
+              <Clock className="w-3 h-3 lg:w-4 lg:h-4" />
+              <span className="hidden sm:inline">Queue ({pendingParticipations.length})</span>
+              <span className="sm:hidden">Q ({pendingParticipations.length})</span>
             </h3>
             
             {/* Bulk Point Adjustment Buttons */}
             <div className="space-y-2 mb-4 pb-3 border-b">
-              <p className="text-xs text-gray-600 font-medium">All Students:</p>
+              <p className="text-xs text-gray-600 font-medium">
+                <span className="hidden sm:inline">All Students:</span>
+                <span className="sm:hidden">All:</span>
+              </p>
               <div className="grid grid-cols-2 gap-1">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleBulkPointAdjustment('subtract')}
                   disabled={processingBulkAdjustment || students.length === 0}
-                  className="text-red-600 hover:bg-red-50 border-red-200 text-xs px-2 py-1 h-auto"
+                  className="text-red-600 hover:bg-red-50 border-red-200 text-xs px-1 lg:px-2 py-1 h-auto"
                 >
-                  <Minus className="w-3 h-3 mr-1" />
-                  -1 All
+                  <Minus className="w-2 h-2 lg:w-3 lg:h-3 mr-1" />
+                  <span className="hidden sm:inline">-1 All</span>
+                  <span className="sm:hidden">-1</span>
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleBulkPointAdjustment('add')}
                   disabled={processingBulkAdjustment || students.length === 0}
-                  className="text-green-600 hover:bg-green-50 border-green-200 text-xs px-2 py-1 h-auto"
+                  className="text-green-600 hover:bg-green-50 border-green-200 text-xs px-1 lg:px-2 py-1 h-auto"
                 >
-                  <Plus className="w-3 h-3 mr-1" />
-                  +1 All
+                  <Plus className="w-2 h-2 lg:w-3 lg:h-3 mr-1" />
+                  <span className="hidden sm:inline">+1 All</span>
+                  <span className="sm:hidden">+1</span>
                 </Button>
               </div>
             </div>

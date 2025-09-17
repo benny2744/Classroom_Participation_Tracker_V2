@@ -16,8 +16,11 @@ The Classroom Participation Tracker is a comprehensive online platform that solv
 - **👥 Student Self-Submission**: Students can request 1-3 participation points
 - **✅ Teacher Approval Queue**: Streamlined yes/no approval interface
 - **📊 Presentation View**: Full class roster with live point tracking
+- **🎯 Direct Point Controls**: Individual +/- buttons for each student in presentation view
+- **⚡ Bulk Point Operations**: Add or subtract points for all students simultaneously
+- **🎨 Enhanced UI**: Prominent login buttons and improved user experience
 - **🔄 Reset Functionality**: Individual student or full class reset options
-- **📱 Responsive Design**: Works on desktop, tablet, and mobile devices
+- **📱 Responsive Design**: Optimized for all screen sizes with mobile-first design and adaptive layouts
 - **📈 CSV Export**: Export participation data for gradebooks
 - **📁 CSV Import**: Upload student rosters via CSV files
 - **🗑️ Room Management**: Safe room deletion with confirmation dialogs
@@ -105,6 +108,8 @@ The Classroom Participation Tracker is a comprehensive online platform that solv
 #### 5. Presentation Mode
 - Use `/teacher/room/[roomCode]/presentation` for classroom display
 - Shows full student roster with current points
+- **Direct Point Controls**: Use +/- buttons next to each student for instant point adjustments
+- **Bulk Point Operations**: Use the buttons at top of approval queue to add/subtract 1 point from all students
 - Fixed approval queue remains accessible on the side
 - Optimized for screen sharing and projection
 
@@ -149,8 +154,10 @@ The Classroom Participation Tracker is a comprehensive online platform that solv
 ├── app/                    # Next.js 14 app directory
 │   ├── api/               # Backend API endpoints
 │   │   ├── auth/          # Authentication endpoints
-│   │   ├── rooms/         # Room management
-│   │   ├── students/      # Student operations
+│   │   ├── rooms/         # Room management & bulk operations
+│   │   ├── students/      # Student operations & point controls
+│   │   ├── participations/# Participation approvals
+│   │   ├── reset/         # Reset functionality
 │   │   └── export/        # Data export functionality
 │   ├── student/           # Student interfaces
 │   ├── teacher/           # Teacher interfaces

@@ -24,15 +24,17 @@ export default function HomePage() {
           {/* Prominent Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <Link href="/teacher">
-              <Button size="lg" className="w-full sm:w-auto px-8 py-4 text-lg">
-                <GraduationCap className="w-6 h-6 mr-3" />
-                Teacher Dashboard
+              <Button size="lg" className="w-full sm:w-auto px-4 sm:px-8 py-3 sm:py-4 text-base sm:text-lg">
+                <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
+                <span className="hidden sm:inline">Teacher Dashboard</span>
+                <span className="sm:hidden">Teacher</span>
               </Button>
             </Link>
             <Link href="/student">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto px-8 py-4 text-lg border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white">
-                <Users className="w-6 h-6 mr-3" />
-                Join as Student
+              <Button variant="outline" size="lg" className="w-full sm:w-auto px-4 sm:px-8 py-3 sm:py-4 text-base sm:text-lg border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white">
+                <Users className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
+                <span className="hidden sm:inline">Join as Student</span>
+                <span className="sm:hidden">Student</span>
               </Button>
             </Link>
           </div>
