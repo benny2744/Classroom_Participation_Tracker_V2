@@ -39,6 +39,7 @@ interface PendingParticipation {
   id: string;
   studentName: string;
   points: number;
+  type: 'POINTS' | 'RAISE_HAND';
   submittedAt: string;
 }
 
@@ -135,6 +136,34 @@ export default function PresentationView({ params }: { params: { id: string } })
       }
     } catch (error) {
       toast.error(`Failed to ${action} participation`);
+    } finally {
+      setProcessingApprovals(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(participationId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleAcknowledge = async (participationId: string) => {
+    setProcessingApprovals(prev => new Set(prev).add(participationId));
+
+    try {
+      const response = await fetch(`/api/participations/${participationId}/acknowledge`, {
+        method: 'POST'
+      });
+
+      if (response.ok) {
+        toast.success('Hand raise acknowledged!');
+        // Remove from pending list immediately for better UX
+        setPendingParticipations(prev => prev.filter(p => p.id !== participationId));
+        // Refresh data
+        await fetchAllData();
+      } else {
+        toast.error('Failed to acknowledge hand raise');
+      }
+    } catch (error) {
+      toast.error('Failed to acknowledge hand raise');
     } finally {
       setProcessingApprovals(prev => {
         const newSet = new Set(prev);
@@ -599,14 +628,29 @@ export default function PresentationView({ params }: { params: { id: string } })
               </div>
             ) : (
               pendingParticipations.map((participation) => (
-                <Card key={participation.id} className="shadow-sm border-l-4 border-l-amber-400">
+                <Card 
+                  key={participation.id} 
+                  className={`shadow-sm border-l-4 ${
+                    participation.type === 'RAISE_HAND' 
+                      ? 'border-l-yellow-500 bg-yellow-50' 
+                      : 'border-l-amber-400'
+                  }`}
+                >
                   <CardContent className="py-3">
                     <div className="space-y-2">
                       <div>
-                        <p className="font-medium text-sm">{participation.studentName}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm">{participation.studentName}</p>
+                          {participation.type === 'RAISE_HAND' && (
+                            <span className="text-lg">🙋‍♂️</span>
+                          )}
+                        </div>
                         <div className="flex items-center justify-between">
                           <Badge variant="outline" className="text-xs">
-                            {participation.points}pt{participation.points !== 1 ? 's' : ''}
+                            {participation.type === 'RAISE_HAND' 
+                              ? 'Raised Hand' 
+                              : `${participation.points}pt${participation.points !== 1 ? 's' : ''}`
+                            }
                           </Badge>
                           <span className="text-xs text-gray-500">
                             {new Date(participation.submittedAt).toLocaleTimeString([], { 
@@ -617,28 +661,43 @@ export default function PresentationView({ params }: { params: { id: string } })
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-1">
+                      {participation.type === 'RAISE_HAND' ? (
+                        // Acknowledge button for hand raises
                         <Button
                           size="sm"
                           variant="default"
-                          onClick={() => handleApproval(participation.id, 'approve')}
+                          onClick={() => handleAcknowledge(participation.id)}
                           disabled={processingApprovals.has(participation.id)}
-                          className="bg-green-600 hover:bg-green-700 px-2 py-1 h-auto text-xs"
+                          className="w-full bg-blue-600 hover:bg-blue-700 px-2 py-1 h-auto text-xs"
                         >
                           <CheckCircle className="w-3 h-3 mr-1" />
-                          Yes
+                          Acknowledge
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleApproval(participation.id, 'reject')}
-                          disabled={processingApprovals.has(participation.id)}
-                          className="border-red-200 text-red-600 hover:bg-red-50 px-2 py-1 h-auto text-xs"
-                        >
-                          <XCircle className="w-3 h-3 mr-1" />
-                          No
-                        </Button>
-                      </div>
+                      ) : (
+                        // Approve/Reject buttons for point submissions
+                        <div className="grid grid-cols-2 gap-1">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => handleApproval(participation.id, 'approve')}
+                            disabled={processingApprovals.has(participation.id)}
+                            className="bg-green-600 hover:bg-green-700 px-2 py-1 h-auto text-xs"
+                          >
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Yes
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleApproval(participation.id, 'reject')}
+                            disabled={processingApprovals.has(participation.id)}
+                            className="border-red-200 text-red-600 hover:bg-red-50 px-2 py-1 h-auto text-xs"
+                          >
+                            <XCircle className="w-3 h-3 mr-1" />
+                            No
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

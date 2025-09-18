@@ -27,13 +27,17 @@ export async function GET(request: Request) {
         student: true,
         session: true
       },
-      orderBy: { submittedAt: 'asc' }
+      orderBy: [
+        { type: 'desc' }, // RAISE_HAND first (R comes after P alphabetically, so desc puts it first)
+        { submittedAt: 'asc' }
+      ]
     });
 
     const formattedParticipations = pendingParticipations.map(p => ({
       id: p.id,
       studentName: p.student.name,
       points: p.points,
+      type: p.type,
       submittedAt: p.submittedAt,
       sessionName: p.session.name
     }));

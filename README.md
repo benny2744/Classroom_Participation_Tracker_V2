@@ -13,8 +13,9 @@ The Classroom Participation Tracker is a comprehensive online platform that solv
 - **🏫 Multi-Teacher Platform**: Support for unlimited concurrent teacher sessions
 - **📱 Room Code System**: Simple 6-character codes for easy student access
 - **⚡ Real-Time Updates**: Instant synchronization across all connected devices
-- **👥 Student Self-Submission**: Students can request 1-3 participation points
-- **✅ Teacher Approval Queue**: Streamlined yes/no approval interface
+- **👥 Student Self-Submission**: Students can request 1-3 participation points or raise their hand for teacher attention
+- **✅ Teacher Approval Queue**: Streamlined yes/no approval interface with priority hand raising
+- **🙋‍♂️ Raise Hands Feature**: Students can raise hands for attention with priority queue placement and teacher acknowledgment
 - **📊 Presentation View**: Full class roster with live point tracking
 - **🎯 Direct Point Controls**: Individual +/- buttons for each student in presentation view
 - **⚡ Bulk Point Operations**: Add or subtract points for all students simultaneously
@@ -101,8 +102,9 @@ The Classroom Participation Tracker is a comprehensive online platform that solv
 #### 4. Running Sessions
 - Click "Present" to start a classroom session
 - Toggle room active/inactive as needed
-- Monitor student submissions in real-time approval queue
-- Use quick yes/no decisions for participation requests
+- Monitor student submissions in real-time approval queue:
+  - **🙋‍♂️ Hand Raises**: Appear first with yellow background and emoji indicator - click "Acknowledge" to clear
+  - **Point Submissions**: Regular participation requests - use "Yes/No" buttons to approve/reject
 - View full class roster with live point updates
 
 #### 5. Presentation Mode
@@ -131,11 +133,13 @@ The Classroom Participation Tracker is a comprehensive online platform that solv
 - Use radio buttons to select your name
 - Click "Continue" to enter the participation interface
 
-#### 3. Submitting Points
-- Select point amount (1, 2, or 3) from the dropdown at the top
-- Click "Submit Points"
-- Wait for teacher approval
-- See your updated points in real-time after approval
+#### 3. Submitting Participation
+- Choose between:
+  - **🙋‍♂️ Raise Hand**: Get teacher attention for questions or help (appears at top of queue with priority)
+  - **Point Submission**: Select 1, 2, or 3 points based on your contribution level
+- Click the corresponding button (🙋‍♂️ "Raise Hand" or "Submit Points")
+- For points: Wait for teacher approval and see your updated points in real-time
+- For hand raises: Teacher will be notified and can acknowledge your request
 
 ## 🏗️ System Architecture
 

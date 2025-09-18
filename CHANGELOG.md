@@ -5,6 +5,55 @@ All notable changes to the Classroom Participation Tracker will be documented in
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2024-09-18
+
+### 🙋‍♂️ Added - Raise Hands Feature
+
+This release introduces a new "Raise Hand" feature that allows students to get teacher attention without submitting points, with priority placement in the approval queue.
+
+### 🎯 Added - Student Hand Raising System
+- **Raise Hand Option**: Students can now select "🙋‍♂️ Raise Hand" from the participation dropdown
+- **Priority Queue Placement**: Hand raises appear at the top of the teacher's approval queue with priority
+- **Visual Distinction**: Hand raises display with yellow background, emoji indicator, and "Raised Hand" badge
+- **No Points Assignment**: Hand raising doesn't award points - it's purely for getting attention
+
+### ✅ Added - Teacher Acknowledgment System
+- **Acknowledge Button**: Teachers see a dedicated "Acknowledge" button for hand raises (instead of Yes/No)
+- **Queue Priority**: Hand raises automatically sort to the top of the approval queue
+- **Instant Removal**: Acknowledged hand raises are immediately removed from the queue
+- **Visual Feedback**: Teachers get clear visual indicators (🙋‍♂️ emoji, yellow background) for hand raises
+
+### 🔧 Enhanced - Database & API System
+- **New Database Fields**: Added `type` (POINTS/RAISE_HAND) and `acknowledgedAt` to Participation model
+- **Enhanced API Endpoints**: 
+  - Updated `/api/participations/submit` to handle both point submissions and hand raises
+  - New `/api/participations/[id]/acknowledge` endpoint for acknowledging hand raises
+  - Updated `/api/participations/pending` with type-based sorting (hand raises first)
+
+### 🎨 Enhanced - User Interface
+- **Student Interface**: 
+  - Combined dropdown with both point options (1-3) and "Raise Hand" option
+  - Dynamic button text ("🙋‍♂️ Raise Hand" vs "Submit X Points")
+  - Different success messages for hand raises vs point submissions
+  - Visual feedback in submission status display
+
+- **Teacher Interface**:
+  - Color-coded approval queue (yellow for hand raises, amber for points)
+  - Different action buttons based on participation type
+  - Priority sorting ensures hand raises appear first
+  - Clear visual distinction between participation types
+
+### 📱 Technical Improvements
+- **TypeScript Support**: Updated interfaces to include new participation types
+- **Database Migrations**: Seamless schema updates with backward compatibility
+- **Real-time Updates**: Hand raises appear instantly in teacher queue
+- **Validation**: Proper validation for both point submissions (1-3) and hand raises (0 points)
+
+### 🔄 Migration Guide
+This release is fully backward compatible. Existing point submissions continue to work normally. The new hand raising feature is additive and doesn't affect existing functionality.
+
+---
+
 ## [2.1.0] - 2024-09-17
 
 ### 🎯 Enhanced Point Management & User Experience

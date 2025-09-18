@@ -7,18 +7,33 @@ export const dynamic = 'force-dynamic';
 // Submit participation request
 export async function POST(request: Request) {
   try {
-    const { studentName, roomId, points } = await request.json();
+    const { studentName, roomId, points, type = 'POINTS' } = await request.json();
     
-    if (!studentName || !roomId || !points) {
+    if (!studentName || !roomId || points === undefined || points === null) {
       return NextResponse.json(
         { error: 'Student name, room ID, and points are required' },
         { status: 400 }
       );
     }
 
-    if (points < 1 || points > 3) {
+    // Validate based on participation type
+    if (type === 'RAISE_HAND') {
+      if (points !== 0) {
+        return NextResponse.json(
+          { error: 'Hand raising must have 0 points' },
+          { status: 400 }
+        );
+      }
+    } else if (type === 'POINTS') {
+      if (points < 1 || points > 3) {
+        return NextResponse.json(
+          { error: 'Points must be between 1 and 3' },
+          { status: 400 }
+        );
+      }
+    } else {
       return NextResponse.json(
-        { error: 'Points must be between 1 and 3' },
+        { error: 'Invalid participation type' },
         { status: 400 }
       );
     }
@@ -73,6 +88,7 @@ export async function POST(request: Request) {
         roomId,
         sessionId: activeSession.id,
         points,
+        type: type as 'POINTS' | 'RAISE_HAND',
         status: 'PENDING'
       },
       include: {
@@ -87,6 +103,7 @@ export async function POST(request: Request) {
         id: participation.id,
         studentName: participation.student.name,
         points: participation.points,
+        type: participation.type,
         status: participation.status,
         submittedAt: participation.submittedAt
       }

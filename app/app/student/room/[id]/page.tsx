@@ -30,6 +30,7 @@ export default function StudentRoomPage({ params }: { params: { id: string } }) 
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [selectedPoints, setSelectedPoints] = useState('1');
+  const [participationType, setParticipationType] = useState('POINTS'); // 'POINTS' or 'RAISE_HAND'
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [lastSubmission, setLastSubmission] = useState<any>(null);
@@ -75,7 +76,7 @@ export default function StudentRoomPage({ params }: { params: { id: string } }) 
       return;
     }
 
-    if (!selectedPoints || parseInt(selectedPoints) < 1 || parseInt(selectedPoints) > 3) {
+    if (participationType === 'POINTS' && (!selectedPoints || parseInt(selectedPoints) < 1 || parseInt(selectedPoints) > 3)) {
       toast.error('Please select points (1-3)');
       return;
     }
@@ -95,7 +96,8 @@ export default function StudentRoomPage({ params }: { params: { id: string } }) 
         body: JSON.stringify({
           studentName: selectedStudent.name,
           roomId: params.id,
-          points: parseInt(selectedPoints)
+          points: participationType === 'RAISE_HAND' ? 0 : parseInt(selectedPoints),
+          type: participationType
         })
       });
 
@@ -103,11 +105,15 @@ export default function StudentRoomPage({ params }: { params: { id: string } }) 
 
       if (data.success) {
         setLastSubmission(data.participation);
-        toast.success(`Participation submitted! (${selectedPoints} ${selectedPoints === '1' ? 'point' : 'points'})`);
+        const message = participationType === 'RAISE_HAND' 
+          ? 'Hand raised! Teacher will be notified.' 
+          : `Participation submitted! (${selectedPoints} ${selectedPoints === '1' ? 'point' : 'points'})`;
+        toast.success(message);
         
         // Reset form
         setSelectedStudentId('');
         setSelectedPoints('1');
+        setParticipationType('POINTS');
         
         // Refresh data
         fetchRoomData();
@@ -159,10 +165,14 @@ export default function StudentRoomPage({ params }: { params: { id: string } }) 
               <div className="flex items-center gap-2 text-green-800">
                 <CheckCircle className="w-5 h-5" />
                 <div>
-                  <p className="font-medium">Submission Received!</p>
+                  <p className="font-medium">
+                    {lastSubmission.type === 'RAISE_HAND' ? 'Hand Raised!' : 'Submission Received!'}
+                  </p>
                   <p className="text-sm text-green-700">
-                    {lastSubmission.points} {lastSubmission.points === 1 ? 'point' : 'points'} - 
-                    Status: {lastSubmission.status}
+                    {lastSubmission.type === 'RAISE_HAND' 
+                      ? 'Teacher will be notified of your question'
+                      : `${lastSubmission.points} ${lastSubmission.points === 1 ? 'point' : 'points'} - Status: ${lastSubmission.status}`
+                    }
                   </p>
                 </div>
               </div>
@@ -182,17 +192,28 @@ export default function StudentRoomPage({ params }: { params: { id: string } }) 
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Points Selection - At Top */}
+            {/* Participation Type Selection */}
             <div>
-              <Label htmlFor="points">Points (1-3)</Label>
+              <Label htmlFor="type">What would you like to do?</Label>
               <Select 
-                value={selectedPoints} 
-                onValueChange={setSelectedPoints}
+                value={participationType === 'POINTS' ? selectedPoints : 'raise_hand'} 
+                onValueChange={(value) => {
+                  if (value === 'raise_hand') {
+                    setParticipationType('RAISE_HAND');
+                    setSelectedPoints('0'); // 0 points for hand raising
+                  } else {
+                    setParticipationType('POINTS');
+                    setSelectedPoints(value);
+                  }
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="raise_hand" className="bg-yellow-50 border-l-4 border-l-yellow-400">
+                    🙋‍♂️ Raise Hand - Ask a question or get attention
+                  </SelectItem>
                   <SelectItem value="1">1 Point - Simple question/comment</SelectItem>
                   <SelectItem value="2">2 Points - Good contribution</SelectItem>
                   <SelectItem value="3">3 Points - Excellent insight</SelectItem>
@@ -245,18 +266,21 @@ export default function StudentRoomPage({ params }: { params: { id: string } }) 
 
             <Button 
               onClick={handleSubmitParticipation}
-              disabled={isSubmitting || !selectedPoints || !selectedStudentId}
+              disabled={isSubmitting || !selectedStudentId || (participationType === 'POINTS' && !selectedPoints)}
               className="w-full"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Submitting...
+                  {participationType === 'RAISE_HAND' ? 'Raising hand...' : 'Submitting...'}
                 </>
               ) : (
                 <>
                   <Send className="w-4 h-4 mr-2" />
-                  Submit {selectedPoints} {selectedPoints === '1' ? 'Point' : 'Points'}
+                  {participationType === 'RAISE_HAND' 
+                    ? '🙋‍♂️ Raise Hand' 
+                    : `Submit ${selectedPoints} ${selectedPoints === '1' ? 'Point' : 'Points'}`
+                  }
                 </>
               )}
             </Button>
