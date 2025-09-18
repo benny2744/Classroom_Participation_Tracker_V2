@@ -114,6 +114,7 @@ enum ParticipationStatus {
 }
 
 enum ParticipationType {
-  POINTS      // Regular point submission (1-3 points)
-  RAISE_HAND  // Hand raising for attention
+  POINTS        // Regular point submission (1-3 points)
+  RAISE_HAND    // Hand raising for attention
+  TEACHER_CALL  // Teacher-initiated random call
 }

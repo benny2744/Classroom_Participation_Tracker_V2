@@ -28,7 +28,6 @@ export async function GET(request: Request) {
         session: true
       },
       orderBy: [
-        { type: 'desc' }, // RAISE_HAND first (R comes after P alphabetically, so desc puts it first)
         { submittedAt: 'asc' }
       ]
     });

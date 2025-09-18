@@ -13,9 +13,10 @@ The Classroom Participation Tracker is a comprehensive online platform that solv
 - **🏫 Multi-Teacher Platform**: Support for unlimited concurrent teacher sessions
 - **📱 Room Code System**: Simple 6-character codes for easy student access
 - **⚡ Real-Time Updates**: Instant synchronization across all connected devices
-- **👥 Student Self-Submission**: Students can request 1-3 participation points or raise their hand for teacher attention
-- **✅ Teacher Approval Queue**: Streamlined yes/no approval interface with priority hand raising
-- **🙋‍♂️ Raise Hands Feature**: Students can raise hands for attention with priority queue placement and teacher acknowledgment
+- **👥 Student Self-Submission**: Students can request 1-3 participation points or raise their hand for teacher attention  
+- **✅ Teacher Approval Queue**: Streamlined approval interface with three-tier priority system
+- **🙋‍♂️ Raise Hands Feature**: Students can raise hands for attention with highest priority queue placement and teacher acknowledgment
+- **👨‍🏫 Call Random Student**: Teachers can randomly select students for participation with second priority placement
 - **📊 Presentation View**: Full class roster with live point tracking
 - **🎯 Direct Point Controls**: Individual +/- buttons for each student in presentation view
 - **⚡ Bulk Point Operations**: Add or subtract points for all students simultaneously
@@ -102,9 +103,12 @@ The Classroom Participation Tracker is a comprehensive online platform that solv
 #### 4. Running Sessions
 - Click "Present" to start a classroom session
 - Toggle room active/inactive as needed
-- Monitor student submissions in real-time approval queue:
-  - **🙋‍♂️ Hand Raises**: Appear first with yellow background and emoji indicator - click "Acknowledge" to clear
-  - **Point Submissions**: Regular participation requests - use "Yes/No" buttons to approve/reject
+- Use teacher-initiated actions:
+  - **Call Random Student**: Click purple button to randomly select a student for participation
+- Monitor student submissions in real-time approval queue with priority ordering:
+  - **🙋‍♂️ Hand Raises** (Priority 1): Appear first with yellow background and emoji indicator - click "Acknowledge" to clear
+  - **👨‍🏫 Teacher Calls** (Priority 2): Your random calls appear with purple background - use "Yes/No" to approve/reject
+  - **📚 Point Submissions** (Priority 3): Regular student requests with amber background - use "Yes/No" to approve/reject
 - View full class roster with live point updates
 
 #### 5. Presentation Mode
@@ -338,7 +342,7 @@ Built with ❤️ for educators who want to enhance classroom engagement and str
 
 ---
 
-**Version**: 2.0.0  
+**Version**: 2.3.0  
 **Last Updated**: September 2024  
 **Node.js**: 18+  
 **Next.js**: 14.2.28  

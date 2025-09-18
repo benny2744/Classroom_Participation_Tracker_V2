@@ -5,6 +5,66 @@ All notable changes to the Classroom Participation Tracker will be documented in
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2024-09-18
+
+### 👨‍🏫 Added - Call Random Student Feature
+
+This release introduces a new "Call Random Student" feature that allows teachers to randomly select students for participation, with enhanced queue priority management.
+
+### 🎯 Added - Teacher-Initiated Random Call System
+- **Call Random Student Button**: Teachers can now click a "Call Random Student" button in the presentation view approval queue
+- **Random Selection**: System randomly picks a student from the room roster and creates a participation event
+- **Automatic Queue Entry**: Called students appear in the approval queue with 1 point for teacher approval/rejection
+- **Visual Distinction**: Teacher calls display with purple background, 👨‍🏫 emoji indicator, and "Teacher Call" badge
+- **Priority Placement**: Teacher calls appear with second priority in the approval queue (after hand raises)
+
+### ⚡ Enhanced - Queue Priority System
+- **Updated Priority Order**: 
+  1. 🙋‍♂️ **Hand Raises** (Highest Priority) - Yellow background
+  2. 👨‍🏫 **Teacher Calls** (Second Priority) - Purple background  
+  3. 📚 **Student Point Requests** (Normal Priority) - Amber background
+- **Smart Sorting**: Within each priority level, items are sorted by submission time (oldest first)
+- **Visual Hierarchy**: Clear color coding and icons help teachers identify participation types at a glance
+
+### 🔧 Enhanced - Database & API System
+- **New Participation Type**: Added `TEACHER_CALL` to the ParticipationType enum
+- **New API Endpoint**: 
+  - `POST /api/rooms/[id]/call-random` - Randomly selects a student and creates a participation event
+  - Validates room has students and active session
+  - Returns selected student information for immediate queue display
+- **Enhanced Sorting Logic**: Client-side priority sorting ensures proper queue order across all participation types
+
+### 🎨 Enhanced - User Interface
+- **Teacher Interface**: 
+  - Purple "Call Random Student" button prominently placed at top of approval queue
+  - Loading states with spinner animation during random selection
+  - Success notifications showing which student was called
+  - Disabled state when no students available or processing in progress
+
+- **Approval Queue Display**:
+  - Three distinct visual styles for different participation types
+  - Consistent approve/reject workflow for both student requests and teacher calls
+  - Maintain existing acknowledge workflow for hand raises
+  - Responsive design adapts button text for mobile ("Random Call" vs "Call Random Student")
+
+### 📱 Technical Improvements
+- **TypeScript Support**: Updated interfaces to include `TEACHER_CALL` participation type
+- **Database Schema**: Seamless schema updates with new enum value
+- **Real-time Updates**: Teacher-initiated calls appear instantly in approval queue
+- **Priority Algorithm**: Efficient client-side sorting maintains proper queue hierarchy
+- **Validation**: Proper error handling for edge cases (no students, no active session)
+
+### 🔄 Migration Guide
+This release is fully backward compatible. Existing hand raises and point submissions continue to work normally. The new teacher call feature is additive and enhances the existing participation workflow.
+
+### 🎯 Use Cases
+- **Cold Calling**: Teachers can randomly engage students who haven't volunteered
+- **Equitable Participation**: Ensures all students have opportunity to participate
+- **Classroom Engagement**: Keeps students attentive knowing they might be called
+- **Assessment**: Quick formative assessment through random questioning
+
+---
+
 ## [2.2.0] - 2024-09-18
 
 ### 🙋‍♂️ Added - Raise Hands Feature

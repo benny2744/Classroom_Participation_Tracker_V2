@@ -39,7 +39,7 @@ interface PendingParticipation {
   id: string;
   studentName: string;
   points: number;
-  type: 'POINTS' | 'RAISE_HAND';
+  type: 'POINTS' | 'RAISE_HAND' | 'TEACHER_CALL';
   submittedAt: string;
 }
 
@@ -66,6 +66,7 @@ export default function PresentationView({ params }: { params: { id: string } })
   const [showFullscreen, setShowFullscreen] = useState(false);
   const [processingPointAdjustments, setProcessingPointAdjustments] = useState<Set<string>>(new Set());
   const [processingBulkAdjustment, setProcessingBulkAdjustment] = useState(false);
+  const [processingRandomCall, setProcessingRandomCall] = useState(false);
 
   useEffect(() => {
     fetchAllData();
@@ -318,13 +319,55 @@ export default function PresentationView({ params }: { params: { id: string } })
     }
   };
 
+  const handleCallRandomStudent = async () => {
+    setProcessingRandomCall(true);
+
+    try {
+      const response = await fetch(`/api/rooms/${params.id}/call-random`, {
+        method: 'POST'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(`Called ${data.participation.studentName} for participation!`);
+        // Refresh data to show the new item in the queue
+        await fetchAllData();
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Failed to call random student');
+      }
+    } catch (error) {
+      toast.error('Failed to call random student');
+    } finally {
+      setProcessingRandomCall(false);
+    }
+  };
+
   const handleExportCSV = () => {
     window.open(`/api/export/csv?roomId=${params.id}`, '_blank');
+  };
+
+  // Priority sorting function for pending participations
+  const getPriorityValue = (type: string) => {
+    switch (type) {
+      case 'RAISE_HAND': return 1;    // Highest priority
+      case 'TEACHER_CALL': return 2;  // Second priority  
+      case 'POINTS': return 3;        // Lowest priority
+      default: return 4;              // Fallback
+    }
   };
 
   const sortedStudents = students.sort((a, b) => b.totalPoints - a.totalPoints);
   const totalParticipations = students.reduce((sum, s) => sum + s.participationsCount, 0);
   const totalPendingCount = pendingParticipations.length;
+  
+  // Sort pending participations by priority, then by submission time
+  const sortedPendingParticipations = [...pendingParticipations].sort((a, b) => {
+    const priorityDiff = getPriorityValue(a.type) - getPriorityValue(b.type);
+    if (priorityDiff !== 0) return priorityDiff;
+    // If same priority, sort by submission time (oldest first)
+    return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
+  });
 
   if (isLoading) {
     return (
@@ -586,6 +629,35 @@ export default function PresentationView({ params }: { params: { id: string } })
               <span className="sm:hidden">Q ({pendingParticipations.length})</span>
             </h3>
             
+            {/* Call Random Student Button */}
+            <div className="space-y-2 mb-4 pb-3 border-b">
+              <p className="text-xs text-gray-600 font-medium">
+                <span className="hidden sm:inline">Teacher Actions:</span>
+                <span className="sm:hidden">Actions:</span>
+              </p>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleCallRandomStudent}
+                disabled={processingRandomCall || students.length === 0}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-xs px-2 py-1 h-auto"
+              >
+                <Users className="w-2 h-2 lg:w-3 lg:h-3 mr-1" />
+                {processingRandomCall ? (
+                  <>
+                    <RefreshCw className="w-2 h-2 lg:w-3 lg:h-3 mr-1 animate-spin" />
+                    <span className="hidden sm:inline">Calling...</span>
+                    <span className="sm:hidden">...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="hidden sm:inline">Call Random Student</span>
+                    <span className="sm:hidden">Random Call</span>
+                  </>
+                )}
+              </Button>
+            </div>
+
             {/* Bulk Point Adjustment Buttons */}
             <div className="space-y-2 mb-4 pb-3 border-b">
               <p className="text-xs text-gray-600 font-medium">
@@ -620,19 +692,21 @@ export default function PresentationView({ params }: { params: { id: string } })
           </div>
           
           <div className="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
-            {pendingParticipations.length === 0 ? (
+            {sortedPendingParticipations.length === 0 ? (
               <div className="text-center py-6">
                 <Clock className="w-6 h-6 text-gray-400 mx-auto mb-2" />
                 <p className="text-sm text-gray-600">No pending</p>
                 <p className="text-xs text-gray-500">Submissions appear here</p>
               </div>
             ) : (
-              pendingParticipations.map((participation) => (
+              sortedPendingParticipations.map((participation) => (
                 <Card 
                   key={participation.id} 
                   className={`shadow-sm border-l-4 ${
                     participation.type === 'RAISE_HAND' 
                       ? 'border-l-yellow-500 bg-yellow-50' 
+                      : participation.type === 'TEACHER_CALL'
+                      ? 'border-l-purple-500 bg-purple-50'
                       : 'border-l-amber-400'
                   }`}
                 >
@@ -644,11 +718,16 @@ export default function PresentationView({ params }: { params: { id: string } })
                           {participation.type === 'RAISE_HAND' && (
                             <span className="text-lg">🙋‍♂️</span>
                           )}
+                          {participation.type === 'TEACHER_CALL' && (
+                            <span className="text-lg">👨‍🏫</span>
+                          )}
                         </div>
                         <div className="flex items-center justify-between">
                           <Badge variant="outline" className="text-xs">
                             {participation.type === 'RAISE_HAND' 
                               ? 'Raised Hand' 
+                              : participation.type === 'TEACHER_CALL'
+                              ? 'Teacher Call'
                               : `${participation.points}pt${participation.points !== 1 ? 's' : ''}`
                             }
                           </Badge>
@@ -674,7 +753,7 @@ export default function PresentationView({ params }: { params: { id: string } })
                           Acknowledge
                         </Button>
                       ) : (
-                        // Approve/Reject buttons for point submissions
+                        // Approve/Reject buttons for point submissions and teacher calls
                         <div className="grid grid-cols-2 gap-1">
                           <Button
                             size="sm"
