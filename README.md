@@ -342,7 +342,7 @@ Built with ❤️ for educators who want to enhance classroom engagement and str
 
 ---
 
-**Version**: 2.3.0  
+**Version**: 2.3.1  
 **Last Updated**: September 2024  
 **Node.js**: 18+  
 **Next.js**: 14.2.28  

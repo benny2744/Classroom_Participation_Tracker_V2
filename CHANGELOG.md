@@ -5,6 +5,34 @@ All notable changes to the Classroom Participation Tracker will be documented in
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2024-09-18
+
+### 📚 Updated - Enhanced Documentation
+
+This release provides comprehensive documentation updates to reflect all the latest features and enhancements in the Classroom Participation Tracker.
+
+### 📋 Documentation Updates
+- **Technical Specification**: Enhanced TECH_SPEC.md with detailed API documentation for all new endpoints
+  - Individual student point adjustment (`POST /api/students/[id]/points`)
+  - Bulk point operations (`POST /api/rooms/[id]/bulk-points`)
+  - Call random student (`POST /api/rooms/[id]/call-random`)
+  - Acknowledge hand raises (`POST /api/participations/[id]/acknowledge`)
+- **Database Schema**: Updated schema documentation to include new participation types and fields
+- **API Routes Structure**: Complete mapping of all available endpoints with detailed specifications
+- **Component Interfaces**: Updated TypeScript interfaces for all new features
+- **Implementation Examples**: Comprehensive code examples for all new API endpoints
+
+### 🎯 Feature Coverage
+All recent enhancements are now fully documented:
+- Enhanced UI with prominent login buttons
+- Direct point adjustment controls (individual and bulk)
+- Raise hands feature for students
+- Call random student functionality for teachers
+- Priority queue system with three-tier ordering
+- Enhanced approval workflows
+
+---
+
 ## [2.3.0] - 2024-09-18
 
 ### 👨‍🏫 Added - Call Random Student Feature

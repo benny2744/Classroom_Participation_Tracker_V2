@@ -100,14 +100,19 @@ interface ParticipationInterfaceProps {
   room: Room
   currentPoints: number
   onSubmit: (points: 1 | 2 | 3) => Promise<void>
+  onRaiseHand: () => Promise<void>
   submissionStatus: 'idle' | 'pending' | 'approved' | 'rejected'
+  handRaiseStatus: 'idle' | 'raised' | 'acknowledged'
   isSubmissionDisabled: boolean
 }
 
-// Participation features:
+// Enhanced participation features:
 // - Point selection with visual indicators (1-3 points)
+// - 🙋‍♂️ Raise Hand option for getting teacher attention (no points)
+// - Dynamic dropdown combining point options and raise hand
 // - Submission status tracking with color-coded states
 // - Real-time point updates via WebSocket
+// - Priority queue system for hand raises
 // - Rate limiting feedback (3 submissions per 5 minutes)
 // - Success/failure animations
 // - Accessibility support (ARIA labels, keyboard navigation)
@@ -187,6 +192,10 @@ interface PresentationViewProps {
   approvalQueue: ApprovalQueueItem[]
   onApproval: (submissionId: string, approved: boolean) => Promise<void>
   onBulkApproval: (submissionIds: string[], approved: boolean) => Promise<void>
+  onStudentPointAdjust: (studentId: string, action: 'add' | 'subtract') => Promise<void>
+  onBulkPointAdjust: (action: 'add' | 'subtract') => Promise<void>
+  onCallRandomStudent: () => Promise<void>
+  onAcknowledgeHandRaise: (submissionId: string) => Promise<void>
   onReset: (type: ResetType, targetId?: string) => Promise<void>
   presentationSettings: PresentationSettings
 }
@@ -198,16 +207,36 @@ interface PresentationSettings {
   autoScroll: boolean
   keyboardShortcuts: boolean
 }
+
+interface ApprovalQueueItem {
+  id: string
+  type: 'POINTS' | 'RAISE_HAND' | 'TEACHER_CALL'
+  studentName: string
+  points?: number
+  submittedAt: Date
+  priority: 1 | 2 | 3  // 1=Hand raises, 2=Teacher calls, 3=Point submissions
+}
 ```
 
-**Presentation Features:**
+**Enhanced Presentation Features:**
 - **Responsive Layout System**: 70/30 split (large), tabbed (medium), overlay (small)
+- **Direct Point Controls**: Individual +/- buttons for each student with instant point adjustments
+- **Bulk Point Operations**: Add/subtract 1 point from all students simultaneously
+- **Call Random Student**: Purple button to randomly select students for participation
+- **Priority Queue System**: Three-tier priority ordering for approval queue:
+  - 🙋‍♂️ **Hand Raises** (Priority 1): Yellow background, immediate attention
+  - 👨‍🏫 **Teacher Calls** (Priority 2): Purple background, random selections  
+  - 📚 **Point Submissions** (Priority 3): Amber background, regular requests
+- **Enhanced Actions**: Different approval workflows based on participation type:
+  - Hand raises: "Acknowledge" button (removes from queue)
+  - Teacher calls & points: "Yes/No" approval buttons
 - **Keyboard Navigation**: Enter (approve), Escape (reject), Arrow keys (navigate)
 - **Bulk Selection**: Checkbox selection for multiple approvals
 - **Auto-scroll**: New submissions automatically scroll into view
 - **Fullscreen Mode**: F11 support with escape handling
 - **Presenter Notes**: Hidden notes visible only to teacher
 - **QR Code Display**: Dynamic QR code for easy room joining
+- **Real-time Updates**: Instant synchronization across all connected devices
 
 ### State Management Architecture
 
@@ -394,6 +423,46 @@ const useRealTimeRoom = (roomCode: string) => {
 - **Testing**: Jest + Supertest for API testing
 
 ### Enhanced API Specification
+
+#### Complete API Routes Structure
+
+```
+/api/
+├── auth/                   # Authentication system
+│   ├── signup/            # Teacher registration
+│   ├── signin/            # Teacher login
+│   └── [...nextauth]/     # NextAuth integration (if needed)
+├── rooms/                 # Room management
+│   ├── create/           # Create room with CSV upload
+│   ├── validate/         # Room code validation
+│   ├── [id]/
+│   │   ├── delete/       # Safe room deletion
+│   │   ├── upload-students/ # Add students via CSV
+│   │   ├── stats/        # Room statistics
+│   │   ├── students/     # Student roster
+│   │   ├── sessions/     # Session management
+│   │   ├── bulk-points/  # NEW: Bulk point operations (add/subtract all students)
+│   │   └── call-random/  # NEW: Call random student for participation
+├── students/              # Student operations
+│   ├── join/             # Join room session
+│   ├── submit/           # Submit participation points
+│   ├── status/           # Student status and points
+│   └── [id]/
+│       └── points/       # NEW: Individual point adjustments (add/subtract)
+├── participations/        # Participation management
+│   ├── pending/          # Get pending approvals with priority sorting
+│   ├── submit/           # ENHANCED: Submit points or raise hand
+│   ├── [id]/
+│   │   ├── approve/      # Approve participation (points/teacher calls)
+│   │   ├── reject/       # Reject participation
+│   │   └── acknowledge/  # NEW: Acknowledge hand raises
+├── export/               # Data export
+│   └── csv/              # CSV export functionality
+└── reset/                # Reset operations
+    ├── student/          # Individual student reset
+    ├── class/            # Full class reset
+    └── session/          # Session reset
+```
 
 #### Authentication Endpoints
 
@@ -1014,6 +1083,415 @@ export async function POST(
 }
 ```
 
+#### New Point Management Endpoints
+
+**Individual Student Point Adjustment**
+```typescript
+POST /api/students/[id]/points
+Content-Type: application/json
+Authorization: Bearer {teacherToken}
+
+// Request
+interface PointAdjustmentRequest {
+  action: 'add' | 'subtract'
+  roomId: string              // Room ID for validation
+}
+
+// Response (200 OK)
+interface PointAdjustmentResponse {
+  success: true
+  student: {
+    id: string
+    name: string
+    newTotalPoints: number
+    previousPoints: number
+  }
+  pointChange: number
+}
+
+// Implementation with safety checks
+export async function POST(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const studentId = params.id
+    const { action, roomId } = await request.json()
+    
+    // Validate teacher authorization and room ownership
+    const teacherId = await getTeacherIdFromRequest(request)
+    const room = await prisma.room.findFirst({
+      where: { id: roomId, teacherId }
+    })
+    
+    if (!room) {
+      return NextResponse.json(
+        { error: 'Room not found or access denied' },
+        { status: 404 }
+      )
+    }
+    
+    // Get current student data
+    const student = await prisma.student.findFirst({
+      where: { id: studentId, roomId }
+    })
+    
+    if (!student) {
+      return NextResponse.json(
+        { error: 'Student not found in this room' },
+        { status: 404 }
+      )
+    }
+    
+    // Calculate point change (prevent negative points)
+    const pointChange = action === 'add' ? 1 : -1
+    const newTotal = Math.max(0, student.totalPoints + pointChange)
+    
+    // Update student points and create participation record
+    const [updatedStudent] = await prisma.$transaction([
+      prisma.student.update({
+        where: { id: studentId },
+        data: { totalPoints: newTotal }
+      }),
+      prisma.participation.create({
+        data: {
+          studentId,
+          roomId,
+          sessionId: await getActiveSessionId(roomId),
+          points: Math.abs(pointChange),
+          status: 'APPROVED',
+          submittedAt: new Date(),
+          approvedAt: new Date(),
+          approvedBy: teacherId,
+          notes: `Teacher ${action === 'add' ? 'added' : 'subtracted'} point directly`
+        }
+      })
+    ])
+    
+    return NextResponse.json({
+      success: true,
+      student: {
+        id: updatedStudent.id,
+        name: updatedStudent.name,
+        newTotalPoints: updatedStudent.totalPoints,
+        previousPoints: student.totalPoints
+      },
+      pointChange: newTotal - student.totalPoints
+    })
+    
+  } catch (error) {
+    logger.error('Point adjustment failed', error)
+    return NextResponse.json(
+      { error: 'Failed to adjust points' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+**Bulk Point Operations**
+```typescript
+POST /api/rooms/[id]/bulk-points
+Content-Type: application/json
+Authorization: Bearer {teacherToken}
+
+// Request
+interface BulkPointRequest {
+  action: 'add' | 'subtract'
+}
+
+// Response (200 OK)
+interface BulkPointResponse {
+  success: true
+  affectedStudents: number
+  totalPointsChanged: number
+  studentsAtZero?: number      // For subtract operations
+  results: {
+    studentId: string
+    name: string
+    previousPoints: number
+    newPoints: number
+  }[]
+}
+
+// Implementation
+export async function POST(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const roomId = params.id
+    const { action } = await request.json()
+    
+    // Verify teacher ownership
+    const teacherId = await getTeacherIdFromRequest(request)
+    const room = await prisma.room.findFirst({
+      where: { id: roomId, teacherId }
+    })
+    
+    if (!room) {
+      return NextResponse.json(
+        { error: 'Room not found or access denied' },
+        { status: 404 }
+      )
+    }
+    
+    // Get all students in room
+    const students = await prisma.student.findMany({
+      where: { roomId },
+      orderBy: { name: 'asc' }
+    })
+    
+    if (students.length === 0) {
+      return NextResponse.json(
+        { error: 'No students found in room' },
+        { status: 404 }
+      )
+    }
+    
+    // Perform bulk update in transaction
+    const results = await prisma.$transaction(async (tx) => {
+      const updateResults = []
+      let studentsAtZero = 0
+      
+      for (const student of students) {
+        const pointChange = action === 'add' ? 1 : -1
+        const newTotal = Math.max(0, student.totalPoints + pointChange)
+        
+        if (action === 'subtract' && newTotal === 0) {
+          studentsAtZero++
+        }
+        
+        // Update student
+        const updatedStudent = await tx.student.update({
+          where: { id: student.id },
+          data: { totalPoints: newTotal }
+        })
+        
+        // Create participation record
+        await tx.participation.create({
+          data: {
+            studentId: student.id,
+            roomId,
+            sessionId: await getActiveSessionId(roomId),
+            points: Math.abs(pointChange),
+            status: 'APPROVED',
+            submittedAt: new Date(),
+            approvedAt: new Date(),
+            approvedBy: teacherId,
+            notes: `Bulk ${action} operation by teacher`
+          }
+        })
+        
+        updateResults.push({
+          studentId: student.id,
+          name: student.name,
+          previousPoints: student.totalPoints,
+          newPoints: newTotal
+        })
+      }
+      
+      return { updateResults, studentsAtZero }
+    })
+    
+    const totalPointsChanged = results.updateResults.reduce(
+      (sum, result) => sum + Math.abs(result.newPoints - result.previousPoints),
+      0
+    )
+    
+    return NextResponse.json({
+      success: true,
+      affectedStudents: students.length,
+      totalPointsChanged,
+      ...(action === 'subtract' && { studentsAtZero: results.studentsAtZero }),
+      results: results.updateResults
+    })
+    
+  } catch (error) {
+    logger.error('Bulk point operation failed', error)
+    return NextResponse.json(
+      { error: 'Failed to update points' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+**Call Random Student**
+```typescript
+POST /api/rooms/[id]/call-random
+Content-Type: application/json
+Authorization: Bearer {teacherToken}
+
+// Response (200 OK)
+interface CallRandomResponse {
+  success: true
+  calledStudent: {
+    id: string
+    name: string
+  }
+  participation: {
+    id: string
+    points: number
+    submittedAt: string
+  }
+}
+
+// Implementation
+export async function POST(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const roomId = params.id
+    
+    // Verify teacher authorization
+    const teacherId = await getTeacherIdFromRequest(request)
+    const room = await prisma.room.findFirst({
+      where: { id: roomId, teacherId },
+      include: { students: true }
+    })
+    
+    if (!room) {
+      return NextResponse.json(
+        { error: 'Room not found or access denied' },
+        { status: 404 }
+      )
+    }
+    
+    if (room.students.length === 0) {
+      return NextResponse.json(
+        { error: 'No students in room to call' },
+        { status: 400 }
+      )
+    }
+    
+    // Randomly select a student
+    const randomIndex = Math.floor(Math.random() * room.students.length)
+    const selectedStudent = room.students[randomIndex]
+    
+    // Create teacher call participation
+    const activeSession = await getActiveSession(roomId)
+    const participation = await prisma.participation.create({
+      data: {
+        studentId: selectedStudent.id,
+        roomId,
+        sessionId: activeSession.id,
+        points: 1,  // Default 1 point for teacher calls
+        status: 'PENDING',
+        type: 'TEACHER_CALL',
+        submittedAt: new Date(),
+        notes: 'Teacher randomly called student'
+      }
+    })
+    
+    logger.info('Random student called', {
+      roomId,
+      studentId: selectedStudent.id,
+      studentName: selectedStudent.name,
+      teacherId
+    })
+    
+    return NextResponse.json({
+      success: true,
+      calledStudent: {
+        id: selectedStudent.id,
+        name: selectedStudent.name
+      },
+      participation: {
+        id: participation.id,
+        points: participation.points,
+        submittedAt: participation.submittedAt.toISOString()
+      }
+    })
+    
+  } catch (error) {
+    logger.error('Random call failed', error)
+    return NextResponse.json(
+      { error: 'Failed to call random student' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+**Acknowledge Hand Raise**
+```typescript
+POST /api/participations/[id]/acknowledge
+Authorization: Bearer {teacherToken}
+
+// Response (200 OK)
+interface AcknowledgeResponse {
+  success: true
+  participation: {
+    id: string
+    studentName: string
+    acknowledgedAt: string
+  }
+}
+
+// Implementation
+export async function POST(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const participationId = params.id
+    
+    // Get participation with room and student info
+    const participation = await prisma.participation.findUnique({
+      where: { id: participationId },
+      include: {
+        student: { select: { name: true } },
+        room: { select: { teacherId: true } }
+      }
+    })
+    
+    if (!participation) {
+      return NextResponse.json(
+        { error: 'Participation not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Verify teacher authorization
+    const teacherId = await getTeacherIdFromRequest(request)
+    if (participation.room.teacherId !== teacherId) {
+      return NextResponse.json(
+        { error: 'Access denied' },
+        { status: 403 }
+      )
+    }
+    
+    // Acknowledge the hand raise (removes from queue)
+    const acknowledgedParticipation = await prisma.participation.update({
+      where: { id: participationId },
+      data: {
+        status: 'APPROVED',
+        acknowledgedAt: new Date(),
+        approvedBy: teacherId
+      }
+    })
+    
+    return NextResponse.json({
+      success: true,
+      participation: {
+        id: acknowledgedParticipation.id,
+        studentName: participation.student.name,
+        acknowledgedAt: acknowledgedParticipation.acknowledgedAt!.toISOString()
+      }
+    })
+    
+  } catch (error) {
+    logger.error('Acknowledge hand raise failed', error)
+    return NextResponse.json(
+      { error: 'Failed to acknowledge hand raise' },
+      { status: 500 }
+    )
+  }
+}
+```
+
 ### Database Implementation
 
 #### Enhanced Prisma Schema
@@ -1114,16 +1592,20 @@ model Session {
 }
 
 model Participation {
-  id          String                PRIMARY KEY DEFAULT cuid()
-  studentId   String                NOT NULL FOREIGN KEY → Student.id
-  roomId      String                NOT NULL FOREIGN KEY → Room.id
-  sessionId   String                NOT NULL FOREIGN KEY → Session.id
-  points      Int                   NOT NULL CHECK (points >= 1 AND points <= 3)
-  status      ParticipationStatus   DEFAULT 'PENDING'
-  submittedAt DateTime              DEFAULT now()
-  processedAt DateTime?
-  approvedBy  String?               // Teacher ID who approved/rejected
-  notes       String?               // Optional notes from teacher
+  id            String              @id @default(cuid())
+  studentId     String
+  roomId        String
+  sessionId     String
+  points        Int                 @default(0) // 0 for hand raises, 1-3 for points
+  status        ParticipationStatus @default(PENDING)
+  type          ParticipationType   @default(POINTS)
+  submittedAt   DateTime            @default(now())
+  processedAt   DateTime?
+  approvedAt    DateTime?
+  rejectedAt    DateTime?
+  acknowledgedAt DateTime?          // For hand raises
+  approvedBy    String?             // Teacher ID who processed
+  notes         String?             // Optional notes from teacher
   
   // Relations
   student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -1131,9 +1613,10 @@ model Participation {
   session     Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   
   // Indexes
-  @@index([status, roomId, submittedAt])
+  @@index([status, type, roomId, submittedAt])
   @@index([studentId, status, submittedAt])
   @@index([sessionId, status])
+  @@index([type, status, submittedAt]) // For priority queue sorting
   @@map("participations")
 }
 
@@ -1157,6 +1640,12 @@ enum ParticipationStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum ParticipationType {
+  POINTS          // Regular point submissions (1-3 points)
+  RAISE_HAND      // Student raising hand for attention (0 points)
+  TEACHER_CALL    // Teacher randomly calling student (1 point)
 }
 ```
 
