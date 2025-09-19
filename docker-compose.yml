@@ -1,0 +1,94 @@
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  database:
+    image: postgres:15-alpine
+    container_name: participation_tracker_db
+    environment:
+      POSTGRES_DB: participation_tracker
+      POSTGRES_USER: tracker_user
+      POSTGRES_PASSWORD: tracker_password_2024
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - participation_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tracker_user -d participation_tracker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Next.js Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DATABASE_URL: postgresql://tracker_user:tracker_password_2024@database:5432/participation_tracker?connect_timeout=15
+        NEXTAUTH_URL: http://localhost:3000
+        NEXTAUTH_SECRET: classroom_participation_tracker_docker_secret_2024
+    container_name: participation_tracker_app
+    environment:
+      # Database Configuration
+      DATABASE_URL: postgresql://tracker_user:tracker_password_2024@database:5432/participation_tracker?connect_timeout=15
+      
+      # Authentication Configuration
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: classroom_participation_tracker_docker_secret_2024
+      
+      # Next.js Configuration
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount uploads directory for file storage (if needed)
+      - uploads_data:/app/uploads
+    networks:
+      - participation_network
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis for session storage (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: participation_tracker_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - participation_network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  uploads_data:
+    driver: local
+
+networks:
+  participation_network:
+    driver: bridge

@@ -29,13 +29,40 @@ The Classroom Participation Tracker is a comprehensive online platform that solv
 
 ## 🚀 Quick Start
 
-### Prerequisites
+Choose your preferred deployment method:
 
-- Node.js 18+ and yarn
-- PostgreSQL database
-- Modern web browser
+### 🐳 Docker Deployment (Recommended)
 
-### Installation
+**Prerequisites**: Docker and Docker Compose installed
+
+1. **Clone and Setup**
+   ```bash
+   git clone <repository-url>
+   cd classroom_participation_tracker
+   chmod +x docker-scripts/setup.sh
+   ./docker-scripts/setup.sh
+   ```
+
+2. **Configure Environment**
+   ```bash
+   cp .env.docker .env.docker.local
+   # Edit .env.docker.local with your settings
+   ```
+
+3. **Deploy with Docker Compose**
+   ```bash
+   docker-compose up --build -d
+   ```
+
+4. **Access Application**
+   - Application: `http://localhost:3000`
+   - Health Check: `http://localhost:3000/api/health`
+
+📖 **For detailed Docker instructions, see [DOCKER.md](./DOCKER.md)**
+
+### 💻 Manual Installation
+
+**Prerequisites**: Node.js 18+, yarn, PostgreSQL
 
 1. **Clone and Install**
    ```bash
@@ -227,8 +254,38 @@ yarn test         # Run test suite (if implemented)
 
 ## 🚀 Deployment
 
-### Production Checklist
+### 🐳 Docker Production Deployment (Recommended)
 
+**Quick Production Setup:**
+```bash
+# Clone repository
+git clone <repository-url>
+cd classroom_participation_tracker
+
+# Setup Docker environment
+./docker-scripts/setup.sh
+
+# Configure production environment
+cp .env.docker .env.docker.local
+# Edit .env.docker.local with secure production values
+
+# Deploy with Docker Compose
+docker-compose up --build -d
+
+# Check deployment
+docker-compose ps
+curl http://localhost:3000/api/health
+```
+
+**Production Environment Variables:**
+- Generate secure `NEXTAUTH_SECRET`: `openssl rand -base64 32`
+- Use strong database password: `openssl rand -base64 16`
+- Set production `NEXTAUTH_URL` to your domain
+- Configure SSL/TLS certificates for HTTPS
+
+### 💻 Manual Production Deployment
+
+**Production Checklist:**
 - [ ] Set secure `NEXTAUTH_SECRET` in production
 - [ ] Configure production PostgreSQL database
 - [ ] Set `NEXTAUTH_URL` to production domain
@@ -245,6 +302,11 @@ yarn test         # Run test suite (if implemented)
 - **Database Optimization**: Indexed queries for real-time updates
 - **Responsive Design**: Optimized for all device types
 - **Caching Strategy**: Static assets and API response caching
+- **Docker Benefits**: 
+  - Consistent deployment across environments
+  - Easy scaling with container orchestration
+  - Isolated dependencies and configuration
+  - Automated backup and restore capabilities
 
 ## 🔒 Security Features
 

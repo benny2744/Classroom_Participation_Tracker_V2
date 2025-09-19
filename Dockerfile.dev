@@ -1,0 +1,27 @@
+
+# Development Dockerfile with hot reload
+FROM node:18-alpine AS development
+
+WORKDIR /app
+
+# Install dependencies
+RUN apk add --no-cache libc6-compat
+
+# Copy package files
+COPY app/package.json app/yarn.lock* ./
+COPY app/.yarnrc.yml* ./
+
+# Install all dependencies (including dev dependencies)
+RUN yarn install
+
+# Copy source code
+COPY app/ .
+
+# Generate Prisma client
+RUN yarn prisma generate
+
+# Expose development port
+EXPOSE 3000
+
+# Start development server with hot reload
+CMD ["yarn", "dev"]

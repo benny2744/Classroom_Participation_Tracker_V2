@@ -3,6 +3,61 @@
 
 All notable changes to the Classroom Participation Tracker will be documented in this file.
 
+## [2.4.0] - 2024-09-19
+
+### 🐳 Docker Containerization - MAJOR UPDATE
+
+#### Added
+- **Complete Docker Support**: Full containerization of the application with production-ready configuration
+- **Docker Compose Setup**: Multi-service orchestration with PostgreSQL database and optional Redis
+- **Development Environment**: Separate Docker setup for development with hot reload
+- **Health Check API**: New `/api/health` endpoint for container health monitoring
+- **Backup & Restore Scripts**: Automated database backup and restore functionality
+- **Database Initialization**: Automated PostgreSQL setup and seeding
+- **Environment Management**: Docker-specific environment configuration templates
+
+#### New Files
+- `Dockerfile`: Production-optimized multi-stage build
+- `Dockerfile.dev`: Development container with hot reload
+- `docker-compose.yml`: Production services orchestration
+- `docker-compose.dev.yml`: Development services configuration
+- `docker-entrypoint.sh`: Application startup script with database initialization
+- `.dockerignore`: Docker build optimization
+- `.env.docker`: Environment variable template
+- `DOCKER.md`: Comprehensive Docker deployment guide
+- `database/init/01-init.sql`: PostgreSQL initialization script
+- `docker-scripts/setup.sh`: Initial Docker environment setup
+- `docker-scripts/backup.sh`: Automated backup solution
+- `docker-scripts/restore.sh`: Database restore functionality
+- `docker-scripts/wait-for-db.sh`: Database readiness check
+
+#### Enhanced
+- **Prisma Configuration**: Updated for multi-platform Docker builds
+- **README.md**: Added Docker deployment instructions as recommended method
+- **Database Schema**: Enhanced binary targets for Docker compatibility
+- **API Health Monitoring**: Container-ready health check endpoints
+
+#### Technical Improvements
+- **Multi-Stage Build**: Optimized Docker image size and build performance
+- **Security**: Non-root user configuration and secure container practices
+- **Networking**: Isolated Docker network for service communication
+- **Persistence**: Named volumes for data persistence across container restarts
+- **Monitoring**: Comprehensive health checks for all services
+- **Logging**: Structured logging for container environments
+
+#### Production Features
+- **Standalone Next.js Build**: Optimized for container deployment
+- **Database Migrations**: Automated schema updates on container start
+- **Environment Isolation**: Complete separation of development and production configs
+- **Resource Management**: Configurable memory and CPU limits
+- **Scalability**: Container orchestration ready for horizontal scaling
+
+### 📖 Documentation
+- **DOCKER.md**: Complete Docker deployment and management guide
+- **Updated README.md**: Docker-first deployment approach
+- **Environment Examples**: Production and development configuration templates
+- **Troubleshooting Guide**: Common Docker deployment issues and solutions
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [2.3.1] - 2024-09-18

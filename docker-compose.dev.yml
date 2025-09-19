@@ -1,0 +1,51 @@
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database for Development
+  database:
+    image: postgres:15-alpine
+    container_name: participation_tracker_db_dev
+    environment:
+      POSTGRES_DB: participation_tracker_dev
+      POSTGRES_USER: tracker_user
+      POSTGRES_PASSWORD: tracker_password_dev
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts
+    networks:
+      - participation_dev_network
+
+  # Development Next.js Application (with hot reload)
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: development
+    container_name: participation_tracker_app_dev
+    environment:
+      DATABASE_URL: postgresql://tracker_user:tracker_password_dev@database:5432/participation_tracker_dev?connect_timeout=15
+      NEXTAUTH_URL: http://localhost:3001
+      NEXTAUTH_SECRET: classroom_participation_tracker_dev_secret_2024
+      NODE_ENV: development
+    ports:
+      - "3001:3000"  # Different port for development
+    volumes:
+      # Mount source code for hot reload
+      - ./app:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - participation_dev_network
+    depends_on:
+      - database
+    command: yarn dev
+
+volumes:
+  postgres_dev_data:
+    driver: local
+
+networks:
+  participation_dev_network:
+    driver: bridge
