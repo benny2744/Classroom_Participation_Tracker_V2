@@ -19,7 +19,7 @@ This guide provides comprehensive instructions for deploying the Classroom Parti
 
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/yourusername/classroom-participation-tracker.git
+git clone https://github.com/benny2744/classroom-participation-tracker.git
 cd classroom-participation-tracker
 ```
 
