@@ -37,7 +37,7 @@ Choose your preferred deployment method:
 
 1. **Clone and Setup**
    ```bash
-   git clone <repository-url>
+   git clone [<repository-url>](https://github.com/benny2744/Classroom_Participation_Tracker_V2)
    cd classroom_participation_tracker
    chmod +x docker-scripts/setup.sh
    ./docker-scripts/setup.sh
