@@ -7,17 +7,24 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat curl
 WORKDIR /app
 
+# Install modern Yarn
+RUN corepack enable && corepack prepare yarn@4.5.0 --activate
+
 # Copy package files
 COPY app/package.json ./
 # Handle yarn.lock - copy if exists, create if symlink
 COPY app/yarn.lock* ./
 
 # Install dependencies
-RUN yarn install --frozen-lockfile --production=false
+RUN yarn install --immutable
 
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
+
+# Install modern Yarn
+RUN corepack enable && corepack prepare yarn@4.5.0 --activate
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY app/ .
 
@@ -39,8 +46,9 @@ RUN yarn build
 FROM base AS runner
 WORKDIR /app
 
-# Install curl for health checks
+# Install curl for health checks and modern Yarn
 RUN apk add --no-cache curl
+RUN corepack enable && corepack prepare yarn@4.5.0 --activate
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs
@@ -58,9 +66,10 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-# Copy package.json and install only Prisma CLI for runtime
+# Copy package.json and yarn.lock for runtime dependency installation
 COPY --from=builder /app/package.json ./package.json
-RUN yarn install --production --ignore-scripts --prefer-offline --frozen-lockfile
+COPY --from=builder /app/yarn.lock ./yarn.lock
+RUN yarn workspaces focus --production
 
 # Create startup script
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./
