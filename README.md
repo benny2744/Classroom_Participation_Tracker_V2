@@ -35,28 +35,36 @@ Choose your preferred deployment method:
 
 **Prerequisites**: Docker and Docker Compose installed
 
-1. **Clone and Setup**
+1. **Clone Repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/benny2744/Classroom_Participation_Tracker_V2.git
    cd classroom_participation_tracker
-   chmod +x docker-scripts/setup.sh
-   ./docker-scripts/setup.sh
    ```
 
-2. **Configure Environment**
+2. **Fresh Start (wipes DB data)**
    ```bash
-   cp .env.docker .env.docker.local
-   # Edit .env.docker.local with your settings
+   docker compose down -v
    ```
 
-3. **Deploy with Docker Compose**
+3. **Build & Start**
    ```bash
-   docker-compose up --build -d
+   docker compose up -d --build
    ```
 
-4. **Access Application**
-   - Application: `http://localhost:3000`
-   - Health Check: `http://localhost:3000/api/health`
+4. **Health Check**
+   ```bash
+   # Local access
+   curl -i http://127.0.0.1:3010/api/health
+   
+   # Remote access (replace <server-ip> with your server's IP)
+   curl -i http://<server-ip>:3010/api/health
+   ```
+
+5. **Access Application**
+   - **Application**: `http://localhost:3010` (or `http://<server-ip>:3010`)
+   - **First Teacher Account**: Open `http://<server-ip>:3010/teacher` in the browser
+
+> **Important:** The app runs on port **3010** (mapped from container port 3000). Set `NEXTAUTH_URL` in docker-compose.yml to the URL you actually use in the browser.
 
 📖 **For detailed Docker instructions, see [DOCKER.md](./DOCKER.md)**
 

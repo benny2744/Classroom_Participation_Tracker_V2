@@ -20,70 +20,76 @@ This guide provides comprehensive instructions for deploying the Classroom Parti
 ### 1. Clone Repository
 ```bash
 git clone https://github.com/benny2744/Classroom_Participation_Tracker_V2.git
-cd Classroom_Participation_Tracker_V2
+cd classroom_participation_tracker
 ```
 
-### 2. Setup Docker Environment (Fixed Version)
+### 2. Fresh Start (Recommended)
 ```bash
-# Run the setup script (includes Docker installation on Ubuntu/Debian)
-chmod +x docker-scripts/setup.sh
-./docker-scripts/setup.sh
+# fresh start (wipes DB data)
+docker compose down -v
+
+# build & start
+docker compose up -d --build
 ```
 
-**What the setup script does:**
-- ✅ Checks and optionally installs Docker & Docker Compose
-- ✅ Fixes yarn.lock symlink issues automatically  
-- ✅ Creates secure environment variables
-- ✅ Sets up proper file permissions
-- ✅ Cleans up previous Docker resources
-
-### 3. Deploy with Docker Compose (Fixed Security Issues)
+### 3. Verify Installation
 ```bash
-# Build and start all services (no more build-time secrets!)
-docker compose up --build -d
+# health check (local)
+curl -i http://127.0.0.1:3010/api/health
 
-# View logs to monitor startup
-docker compose logs -f
-
-# Check service status
-docker compose ps
+# health check (remote/laptop)
+curl -i http://<server-ip>:3010/api/health
 ```
 
-### 4. Verify Installation
+### 4. Access Application
+- **Application**: http://localhost:3010 (or http://\<server-ip\>:3010)
+- **Health Check**: http://localhost:3010/api/health  
+- **First Teacher Account**: Open http://\<server-ip\>:3010/teacher in the browser
+
+> **Important:** The app now runs on port **3010** (mapped from container port 3000). Set `NEXTAUTH_URL` in docker-compose.yml to the URL you actually use in the browser (IP:port or domain).  
+> Example: `NEXTAUTH_URL=http://<server-ip>:3010`
+
+### 5. Database Management (One-liner Prisma Setup)
 ```bash
-# Check application health
-curl http://localhost:3000/api/health
-
-# Expected response:
-# {"status":"ok","timestamp":"2024-09-28T10:00:00.000Z","services":{"database":"connected","application":"running"}}
+# Run inside the app container (compose will build/run it)
+docker compose run --rm app sh -lc '
+  export npm_config_cache=/tmp/.npm &&
+  VER=$(node -p "require(\"./package.json\").dependencies[\"@prisma/client\"] || (require(\"./package.json\").devDependencies && require(\"./package.json\").devDependencies[\"@prisma/client\"])) &&
+  echo "Using Prisma CLI $VER" &&
+  npx --yes prisma@$VER generate --schema /app/prisma/schema.prisma &&
+  npx --yes prisma@$VER migrate deploy --schema /app/prisma/schema.prisma &&
+  npx --yes prisma@$VER db seed --schema /app/prisma/schema.prisma || true
+'
 ```
 
-### 5. Access Application
-- **Application**: http://localhost:3000
-- **Health Check**: http://localhost:3000/api/health  
-- **Database**: localhost:5432 (PostgreSQL)
-- **Redis**: localhost:6379 (optional)
-
-## ⚡ What's Fixed in v2.4.0
-
-### 🔒 Security Issues Resolved
-- ❌ **BEFORE**: Secrets exposed in Docker build arguments
-- ✅ **AFTER**: Secrets only in runtime environment variables
-- ❌ **BEFORE**: Legacy ENV format causing warnings  
-- ✅ **AFTER**: Modern ENV key=value format
-
-### 📁 File Management Issues Resolved
-- ❌ **BEFORE**: yarn.lock symlink causing build failures
-- ✅ **AFTER**: Automatic conversion to real file during setup
-- ❌ **BEFORE**: Missing file copy operations
-- ✅ **AFTER**: Robust file handling with proper Docker context
+## ⚡ What's Fixed in v2.4.1
 
 ### 🐳 Docker Configuration Improvements
-- ✅ **Multi-stage builds** for optimized image size
-- ✅ **Standalone Next.js output** for better containerization  
-- ✅ **Proper user permissions** (non-root execution)
-- ✅ **Health checks** for all services
-- ✅ **Graceful startup** with database connection retries
+- ✅ **Removed obsolete `version:` key** from docker-compose.yml (deprecated in Docker Compose v2+)
+- ✅ **Fixed port mapping** to 3010:3000 for external access
+- ✅ **Simplified service dependencies** with proper health checks
+- ✅ **Non-standalone Next.js runtime** using `next start` (more reliable)
+- ✅ **Yarn 4 with node-modules linker** (avoids PnP headaches)
+
+### 🔧 Prisma & Database Fixes
+- ✅ **Version-matched Prisma CLI** to avoid client/CLI version skew
+- ✅ **Copy source before Prisma generation** (proper build order)
+- ✅ **Removed custom Prisma output paths** causing build issues
+- ✅ **Simplified Prisma client generator** with standard output location
+- ✅ **Stronger database health checks** with increased retries
+
+### 📦 Build Process Improvements
+- ✅ **Proper multi-stage build** with optimized layer caching
+- ✅ **Fixed yarn.lock compatibility** with modern Yarn version
+- ✅ **Simplified Next.js config** (removed standalone complexity)
+- ✅ **Better error handling** during TypeScript builds
+- ✅ **Healthcheck with wget** instead of curl for lighter images
+
+### 🔐 Environment & Security
+- ✅ **Updated default credentials** with secure passwords
+- ✅ **Proper NEXTAUTH_URL configuration** for external access
+- ✅ **Simplified environment variables** (removed unused options)
+- ✅ **Non-root user execution** for security
 
 ## 📁 Docker File Structure
 
