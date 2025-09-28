@@ -3,6 +3,103 @@
 
 All notable changes to the Classroom Participation Tracker will be documented in this file.
 
+## [2.4.1] - 2024-09-28
+
+### 🔧 Docker Configuration Fixes - Critical Build Issues Resolved
+
+#### Fixed
+- **Docker Build Failures**: Resolved yarn.lock symlink issue causing "file not found" errors
+- **Security Warnings**: Removed build-time secrets from Dockerfile (NEXTAUTH_SECRET, DATABASE_URL)
+- **Legacy Format Warnings**: Updated all ENV statements to modern key=value format
+- **Build Context Issues**: Fixed file copying problems in multi-stage builds
+- **Standalone Output**: Ensured Next.js builds with proper standalone configuration
+
+#### Security Improvements
+- **❌ BEFORE**: Secrets exposed in Docker build arguments and ENV instructions
+- **✅ AFTER**: Secrets only in runtime environment variables, no build-time exposure
+- **❌ BEFORE**: Legacy ENV format causing Docker warnings
+- **✅ AFTER**: Modern ENV key=value format throughout all Docker files
+
+#### Build Process Improvements
+- **Symlink Resolution**: Automatic conversion of yarn.lock symlinks to real files
+- **File Handling**: Robust file copying with proper error handling
+- **Build Optimization**: Cleaner multi-stage build process without unnecessary layers
+- **Context Optimization**: Improved .dockerignore and build context management
+
+#### Enhanced Setup Process
+- **Automatic Docker Installation**: Setup script now includes Docker installation for Ubuntu/Debian
+- **Symlink Detection**: Automatic detection and resolution of problematic symlinks
+- **Environment Security**: Improved secure password generation with fallbacks
+- **Cleanup Integration**: Automatic cleanup of previous Docker resources
+
+#### Troubleshooting Documentation
+- **Comprehensive Issue Resolution**: Added solutions for all common Docker build problems
+- **Step-by-Step Debugging**: Detailed troubleshooting guide with specific commands
+- **Error Message Mapping**: Direct mapping of error messages to solutions
+- **Performance Monitoring**: Added container monitoring and debugging commands
+
+### Technical Fixes
+
+#### Dockerfile Improvements
+```dockerfile
+# BEFORE (Problematic)
+COPY app/yarn.lock* ./              # Failed due to symlink
+ARG NEXTAUTH_SECRET                 # Security warning
+ENV HOSTNAME "0.0.0.0"             # Legacy format warning
+
+# AFTER (Fixed)  
+COPY app/yarn.lock ./               # Real file copy
+# Secrets only in runtime environment
+ENV HOSTNAME=0.0.0.0               # Modern format
+```
+
+#### Setup Script Enhancements
+```bash
+# Added symlink resolution
+if [ -L "app/yarn.lock" ]; then
+    cp "$(readlink app/yarn.lock)" app/yarn.lock.temp
+    rm app/yarn.lock  
+    mv app/yarn.lock.temp app/yarn.lock
+fi
+```
+
+#### Build Process Optimization
+- **Multi-Stage Efficiency**: Optimized layer ordering for better caching
+- **Dependency Installation**: Improved node_modules handling across stages
+- **File Permissions**: Proper ownership and permissions for all copied files
+- **Health Check Integration**: Built-in health check endpoint configuration
+
+### Error Resolution Guide
+
+#### Resolved Build Errors
+1. **`"/app/yarn.lock": not found`** → Symlink conversion during setup
+2. **`SecretsUsedInArgOrEnv`** → Runtime-only environment variables  
+3. **`LegacyKeyValueFormat`** → Modern ENV key=value syntax
+4. **`failed to compute cache key`** → Fixed file copying in Docker context
+
+#### New Troubleshooting Commands
+```bash
+# Quick diagnosis
+docker compose logs -f
+curl http://localhost:3000/api/health
+
+# Clean rebuild  
+docker compose down --volumes --remove-orphans
+docker compose up --build -d
+
+# Advanced debugging
+docker compose exec app sh
+docker stats
+```
+
+### Documentation Updates
+- **DOCKER.md**: Added comprehensive troubleshooting section with 50+ solutions
+- **Error Mapping**: Direct correlation between error messages and fixes
+- **Performance Guide**: Container monitoring and optimization recommendations
+- **Security Guide**: Updated security best practices for containerized deployment
+
+---
+
 ## [2.4.0] - 2024-09-19
 
 ### 🐳 Docker Containerization - MAJOR UPDATE

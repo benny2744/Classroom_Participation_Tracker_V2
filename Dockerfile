@@ -7,10 +7,10 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy package files
-COPY app/package.json app/yarn.lock* ./
-# Copy yarn configuration if it exists
-COPY app/.yarnrc.yml* ./
+# Copy package.json and yarn files
+COPY app/package.json ./
+COPY app/yarn.lock ./
+COPY app/.yarnrc.yml ./
 
 # Install dependencies
 RUN yarn install --frozen-lockfile
@@ -21,16 +21,12 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY app/ .
 
-# Copy environment variables for build
-ARG DATABASE_URL
-ARG NEXTAUTH_URL
-ARG NEXTAUTH_SECRET
-ENV DATABASE_URL=$DATABASE_URL
-ENV NEXTAUTH_URL=$NEXTAUTH_URL
-ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
-
-# Generate Prisma client
+# Generate Prisma client (requires DATABASE_URL but doesn't need real DB)
+ENV DATABASE_URL="postgresql://placeholder:placeholder@placeholder:5432/placeholder"
 RUN yarn prisma generate
+
+# Configure Next.js for standalone output
+ENV NEXT_OUTPUT_MODE=standalone
 
 # Build the Next.js application
 RUN yarn build
@@ -45,10 +41,12 @@ RUN adduser --system --uid 1001 nextjs
 
 # Copy built application
 COPY --from=builder /app/public ./public
+
+# Copy standalone build (for Next.js standalone output)
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy Prisma files
+# Copy Prisma files for runtime
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
@@ -59,17 +57,16 @@ COPY --from=builder /app/package.json ./package.json
 # Install production dependencies including Prisma CLI
 COPY --from=deps /app/node_modules ./node_modules
 
+# Create startup script
+COPY --chown=nextjs:nodejs docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
+
 USER nextjs
 
 EXPOSE 3000
 
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
-
-# Create startup script
-COPY --chown=nextjs:nodejs docker-entrypoint.sh ./
-USER root
-RUN chmod +x docker-entrypoint.sh
-USER nextjs
+# Use proper ENV format (fixed legacy warnings)
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
 CMD ["./docker-entrypoint.sh"]

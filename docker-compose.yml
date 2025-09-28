@@ -30,10 +30,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        DATABASE_URL: postgresql://tracker_user:tracker_password_2024@database:5432/participation_tracker?connect_timeout=15
-        NEXTAUTH_URL: http://localhost:3000
-        NEXTAUTH_SECRET: classroom_participation_tracker_docker_secret_2024
     container_name: participation_tracker_app
     environment:
       # Database Configuration

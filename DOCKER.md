@@ -19,41 +19,71 @@ This guide provides comprehensive instructions for deploying the Classroom Parti
 
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/yourusername/classroom-participation-tracker.git
-cd classroom-participation-tracker
+git clone https://github.com/benny2744/Classroom_Participation_Tracker_V2.git
+cd Classroom_Participation_Tracker_V2
 ```
 
-### 2. Setup Docker Environment
+### 2. Setup Docker Environment (Fixed Version)
 ```bash
-# Run the setup script
+# Run the setup script (includes Docker installation on Ubuntu/Debian)
 chmod +x docker-scripts/setup.sh
 ./docker-scripts/setup.sh
 ```
 
-### 3. Configure Environment
-```bash
-# Edit environment variables
-cp .env.docker .env.docker.local
-nano .env.docker.local  # Update with your settings
-```
+**What the setup script does:**
+- ✅ Checks and optionally installs Docker & Docker Compose
+- ✅ Fixes yarn.lock symlink issues automatically  
+- ✅ Creates secure environment variables
+- ✅ Sets up proper file permissions
+- ✅ Cleans up previous Docker resources
 
-### 4. Deploy with Docker Compose
+### 3. Deploy with Docker Compose (Fixed Security Issues)
 ```bash
-# Build and start all services
-docker-compose up --build -d
+# Build and start all services (no more build-time secrets!)
+docker compose up --build -d
 
-# View logs
-docker-compose logs -f
+# View logs to monitor startup
+docker compose logs -f
 
 # Check service status
-docker-compose ps
+docker compose ps
+```
+
+### 4. Verify Installation
+```bash
+# Check application health
+curl http://localhost:3000/api/health
+
+# Expected response:
+# {"status":"ok","timestamp":"2024-09-28T10:00:00.000Z","services":{"database":"connected","application":"running"}}
 ```
 
 ### 5. Access Application
 - **Application**: http://localhost:3000
-- **Health Check**: http://localhost:3000/api/health
+- **Health Check**: http://localhost:3000/api/health  
 - **Database**: localhost:5432 (PostgreSQL)
 - **Redis**: localhost:6379 (optional)
+
+## ⚡ What's Fixed in v2.4.0
+
+### 🔒 Security Issues Resolved
+- ❌ **BEFORE**: Secrets exposed in Docker build arguments
+- ✅ **AFTER**: Secrets only in runtime environment variables
+- ❌ **BEFORE**: Legacy ENV format causing warnings  
+- ✅ **AFTER**: Modern ENV key=value format
+
+### 📁 File Management Issues Resolved
+- ❌ **BEFORE**: yarn.lock symlink causing build failures
+- ✅ **AFTER**: Automatic conversion to real file during setup
+- ❌ **BEFORE**: Missing file copy operations
+- ✅ **AFTER**: Robust file handling with proper Docker context
+
+### 🐳 Docker Configuration Improvements
+- ✅ **Multi-stage builds** for optimized image size
+- ✅ **Standalone Next.js output** for better containerization  
+- ✅ **Proper user permissions** (non-root execution)
+- ✅ **Health checks** for all services
+- ✅ **Graceful startup** with database connection retries
 
 ## 📁 Docker File Structure
 
@@ -313,39 +343,91 @@ docker-compose exec -T database psql -U tracker_user -d participation_tracker < 
 
 ## 🚨 Troubleshooting
 
-### Common Issues
+### Issues Fixed in v2.4.0
+
+#### ✅ SOLVED: Docker Build Failures
+**Previous Error:**
+```bash
+ERROR: failed to solve: failed to compute cache key: "/app/yarn.lock": not found
+```
+**Solution:** Automatic conversion of yarn.lock symlink to real file during setup.
+
+**Previous Error:**
+```bash
+SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data
+```
+**Solution:** Removed build-time secrets, moved to runtime environment only.
+
+**Previous Error:**
+```bash
+LegacyKeyValueFormat: "ENV key=value" should be used instead of legacy format
+```
+**Solution:** Updated all ENV statements to modern key=value format.
+
+### Common Issues & Solutions
 
 #### Application Won't Start
 ```bash
-# Check logs
-docker-compose logs app
+# Step 1: Check all service logs
+docker compose logs -f
 
-# Verify database connection
-docker-compose exec app npx prisma db push
+# Step 2: Verify database connectivity
+docker compose exec database pg_isready -U tracker_user
 
-# Restart services
-docker-compose restart
+# Step 3: Check application logs specifically
+docker compose logs -f app
+
+# Step 4: Verify environment variables
+docker compose exec app env | grep -E "(DATABASE_URL|NEXTAUTH)"
+
+# Step 5: Force rebuild if needed
+docker compose down
+docker compose up --build --force-recreate -d
 ```
 
 #### Database Connection Issues
 ```bash
-# Check database status
-docker-compose exec database pg_isready -U tracker_user
+# Check database service status
+docker compose ps database
 
-# Verify connection string
-docker-compose exec app env | grep DATABASE_URL
+# Test database connectivity from app container
+docker compose exec app npx prisma db push
 
-# Test connection
-docker-compose exec app npx prisma db push
+# Verify connection string format
+docker compose exec app echo $DATABASE_URL
+
+# Reset database if needed
+docker compose exec database psql -U tracker_user -d participation_tracker -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 ```
 
-#### Port Conflicts
+#### Port Conflicts (Common on Linux/WSL)
 ```bash
-# Check port usage
-netstat -tulpn | grep :3000
+# Check what's using port 3000
+sudo netstat -tulpn | grep :3000
+# or
+sudo lsof -i :3000
 
-# Use different ports
-docker-compose -f docker-compose.yml up -d --force-recreate
+# Stop conflicting services
+sudo systemctl stop nginx  # if nginx is running
+sudo pkill -f "node.*3000" # kill any node processes on port 3000
+
+# Use different ports by modifying docker-compose.yml
+# Change "3000:3000" to "3001:3000" in the ports section
+```
+
+#### Docker Installation Issues (Ubuntu/Debian)
+```bash
+# If Docker is not found after installation
+sudo systemctl start docker
+sudo systemctl enable docker
+
+# If permission denied errors
+sudo usermod -aG docker $USER
+# Then logout and login again
+
+# If old Docker Compose installed
+sudo apt remove docker-compose
+# Use built-in compose plugin: docker compose (not docker-compose)
 ```
 
 #### Permission Issues
@@ -354,24 +436,121 @@ docker-compose -f docker-compose.yml up -d --force-recreate
 chmod +x docker-entrypoint.sh
 chmod +x docker-scripts/*.sh
 
-# Fix volume permissions
-docker-compose exec app chown -R nextjs:nodejs /app
+# Fix yarn.lock if it's still a symlink
+cd app
+if [ -L "yarn.lock" ]; then
+    YARN_TARGET=$(readlink yarn.lock)
+    cp "$YARN_TARGET" yarn.lock.temp
+    rm yarn.lock
+    mv yarn.lock.temp yarn.lock
+fi
+```
+
+#### Build Context Issues
+```bash
+# Clear Docker build cache
+docker builder prune -f
+docker system prune -af
+
+# Rebuild from scratch
+docker compose down --rmi all --volumes --remove-orphans
+docker compose up --build -d
+```
+
+#### Health Check Failures
+```bash
+# Check health check endpoint manually
+curl -v http://localhost:3000/api/health
+
+# If 404 error, the app might not be built with standalone output
+docker compose exec app ls -la .next/
+docker compose exec app ls -la server.js
+
+# Check health check logs
+docker compose exec app curl -f localhost:3000/api/health || echo "Health check failed"
 ```
 
 ### Debug Commands
+
+#### Container Inspection
 ```bash
 # Interactive shell in app container
-docker-compose exec app sh
+docker compose exec app sh
+
+# Check file structure
+docker compose exec app ls -la
+docker compose exec app ls -la .next/
 
 # Check environment variables
-docker-compose exec app env
+docker compose exec app env
 
-# Test Prisma connection
-docker-compose exec app npx prisma studio
+# Check process status
+docker compose exec app ps aux
+```
 
-# Check network connectivity
+#### Network Debugging
+```bash
+# Check Docker networks
 docker network ls
 docker network inspect classroom-participation-tracker_participation_network
+
+# Test service-to-service connectivity
+docker compose exec app ping database
+docker compose exec app nc -zv database 5432
+```
+
+#### Database Debugging
+```bash
+# Access PostgreSQL directly
+docker compose exec database psql -U tracker_user -d participation_tracker
+
+# Check database tables
+docker compose exec database psql -U tracker_user -d participation_tracker -c "\dt"
+
+# Check database connection from app
+docker compose exec app npx prisma studio --browser none
+```
+
+#### Performance Monitoring
+```bash
+# Monitor resource usage
+docker stats
+
+# Check logs with timestamps
+docker compose logs -f -t
+
+# Monitor specific service
+docker compose logs -f app
+```
+
+### Advanced Troubleshooting
+
+#### Complete Clean Rebuild
+```bash
+# Stop all services
+docker compose down --volumes --remove-orphans
+
+# Remove all images
+docker rmi $(docker images classroom-participation-tracker* -q) 2>/dev/null || true
+
+# Clean build cache
+docker builder prune -af
+
+# Clean system
+docker system prune -af
+
+# Rebuild everything
+./docker-scripts/setup.sh
+docker compose up --build -d
+```
+
+#### Backup Before Troubleshooting
+```bash
+# Create backup
+./docker-scripts/backup.sh
+
+# This creates a backup in the format: backup_YYYYMMDD_HHMMSS.tar.gz
+# Contains database dump and configuration files
 ```
 
 ## 🔄 Updates and Maintenance
