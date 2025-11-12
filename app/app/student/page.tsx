@@ -36,7 +36,7 @@ export default function StudentLandingPage() {
     setError('');
 
     try {
-      const response = await fetch('/api/rooms/validate', {
+      const response = await fetch('/participation/api/rooms/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: roomCode.toUpperCase() })

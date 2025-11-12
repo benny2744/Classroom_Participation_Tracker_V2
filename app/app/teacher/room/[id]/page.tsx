@@ -7,6 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { 
   Users, 
   BarChart3, 
@@ -20,7 +26,9 @@ import {
   Clock,
   Trophy,
   CheckCircle,
-  XCircle
+  XCircle,
+  ChevronDown,
+  FileText
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -70,7 +78,7 @@ export default function RoomManagementPage({ params }: { params: { id: string } 
 
   const fetchRoomStats = async () => {
     try {
-      const response = await fetch(`/api/rooms/${params.id}/stats`);
+      const response = await fetch(`/participation/api/rooms/${params.id}/stats`);
       if (response.ok) {
         const data = await response.json();
         setRoomStats(data);
@@ -90,8 +98,8 @@ export default function RoomManagementPage({ params }: { params: { id: string } 
     toast.success('Room code copied to clipboard!');
   };
 
-  const handleExportCSV = () => {
-    window.open(`/api/export/csv?roomId=${params.id}`, '_blank');
+  const handleExportCSV = (type: 'logs' | 'totals' = 'logs') => {
+    window.open(`/participation/api/export/csv?roomId=${params.id}&type=${type}`, '_blank');
   };
 
   if (isLoading) {
@@ -159,10 +167,25 @@ export default function RoomManagementPage({ params }: { params: { id: string } 
                 Presentation View
               </Button>
             </Link>
-            <Button variant="outline" onClick={handleExportCSV}>
-              <Download className="w-4 h-4 mr-2" />
-              Export Data
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Download className="w-4 h-4 mr-2" />
+                  Export Data
+                  <ChevronDown className="w-4 h-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExportCSV('totals')}>
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  Export Student Totals
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportCSV('logs')}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Export Participation Logs
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 

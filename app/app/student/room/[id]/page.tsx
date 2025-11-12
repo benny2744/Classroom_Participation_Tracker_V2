@@ -45,7 +45,7 @@ export default function StudentRoomPage({ params }: { params: { id: string } }) 
 
   const fetchRoomData = async () => {
     try {
-      const response = await fetch(`/api/rooms/${params.id}/students`);
+      const response = await fetch(`/participation/api/rooms/${params.id}/students`);
       if (!response.ok) {
         if (response.status === 404) {
           toast.error('Room not found');
@@ -90,7 +90,7 @@ export default function StudentRoomPage({ params }: { params: { id: string } }) 
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/participations/submit', {
+      const response = await fetch('/participation/api/participations/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

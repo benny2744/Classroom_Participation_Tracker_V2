@@ -14,6 +14,7 @@ import { GraduationCap, Plus, Users, BarChart3, Calendar, Settings, ArrowLeft, C
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { getApiUrl } from '@/lib/api-utils';
 
 interface Teacher {
   id: string;
@@ -78,7 +79,7 @@ export default function TeacherDashboard() {
 
   const fetchRooms = async (teacherId: string) => {
     try {
-      const response = await fetch(`/api/rooms?teacherId=${teacherId}`);
+      const response = await fetch(getApiUrl(`/api/rooms?teacherId=${teacherId}`));
       if (response.ok) {
         const roomsData = await response.json();
         setRooms(roomsData);
@@ -100,7 +101,7 @@ export default function TeacherDashboard() {
     setIsAuthenticating(true);
 
     try {
-      const response = await fetch('/api/auth/signin', {
+      const response = await fetch(getApiUrl('/api/auth/signin'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: teacherEmail, password: teacherPassword })
@@ -143,7 +144,7 @@ export default function TeacherDashboard() {
     setIsAuthenticating(true);
 
     try {
-      const response = await fetch('/api/auth/signup', {
+      const response = await fetch(getApiUrl('/api/auth/signup'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -228,7 +229,7 @@ export default function TeacherDashboard() {
       formData.append('teacherId', teacher.id);
       formData.append('csvFile', csvFile);
 
-      const response = await fetch('/api/rooms', {
+      const response = await fetch(getApiUrl('/api/rooms'), {
         method: 'POST',
         body: formData
       });
@@ -262,7 +263,7 @@ export default function TeacherDashboard() {
     setIsDeletingRoom(roomId);
 
     try {
-      const response = await fetch(`/api/rooms/${roomId}/delete`, {
+      const response = await fetch(getApiUrl(`/api/rooms/${roomId}/delete`), {
         method: 'DELETE',
       });
 
@@ -327,7 +328,7 @@ export default function TeacherDashboard() {
       const formData = new FormData();
       formData.append('csvFile', uploadCsvFile);
 
-      const response = await fetch(`/api/rooms/${roomId}/upload-students`, {
+      const response = await fetch(getApiUrl(`/api/rooms/${roomId}/upload-students`), {
         method: 'POST',
         body: formData
       });

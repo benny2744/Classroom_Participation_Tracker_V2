@@ -7,6 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { 
   Users, 
   CheckCircle, 
@@ -22,7 +28,10 @@ import {
   Trophy,
   RefreshCw,
   Plus,
-  Minus
+  Minus,
+  ChevronDown,
+  FileText,
+  BarChart
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -94,7 +103,7 @@ export default function PresentationView({ params }: { params: { id: string } })
 
   const fetchStudents = async () => {
     try {
-      const response = await fetch(`/api/rooms/${params.id}/students`);
+      const response = await fetch(`/participation/api/rooms/${params.id}/students`);
       if (response.ok) {
         const data = await response.json();
         setRoom(data.room);
@@ -108,7 +117,7 @@ export default function PresentationView({ params }: { params: { id: string } })
 
   const fetchPendingParticipations = async () => {
     try {
-      const response = await fetch(`/api/participations/pending?roomId=${params.id}`);
+      const response = await fetch(`/participation/api/participations/pending?roomId=${params.id}`);
       if (response.ok) {
         const data = await response.json();
         setPendingParticipations(data);
@@ -122,7 +131,7 @@ export default function PresentationView({ params }: { params: { id: string } })
     setProcessingApprovals(prev => new Set(prev).add(participationId));
 
     try {
-      const response = await fetch(`/api/participations/${participationId}/${action}`, {
+      const response = await fetch(`/participation/api/participations/${participationId}/${action}`, {
         method: 'POST'
       });
 
@@ -150,7 +159,7 @@ export default function PresentationView({ params }: { params: { id: string } })
     setProcessingApprovals(prev => new Set(prev).add(participationId));
 
     try {
-      const response = await fetch(`/api/participations/${participationId}/acknowledge`, {
+      const response = await fetch(`/participation/api/participations/${participationId}/acknowledge`, {
         method: 'POST'
       });
 
@@ -176,7 +185,7 @@ export default function PresentationView({ params }: { params: { id: string } })
 
   const handleResetStudent = async (studentId: string, studentName: string) => {
     try {
-      const response = await fetch('/api/reset/student', {
+      const response = await fetch('/participation/api/reset/student', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentId })
@@ -198,7 +207,7 @@ export default function PresentationView({ params }: { params: { id: string } })
 
   const handleResetClass = async () => {
     try {
-      const response = await fetch('/api/reset/class', {
+      const response = await fetch('/participation/api/reset/class', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ roomId: params.id })
@@ -220,7 +229,7 @@ export default function PresentationView({ params }: { params: { id: string } })
 
   const handleResetSession = async () => {
     try {
-      const response = await fetch('/api/reset/session', {
+      const response = await fetch('/participation/api/reset/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ roomId: params.id })
@@ -243,7 +252,7 @@ export default function PresentationView({ params }: { params: { id: string } })
     if (!undoData) return;
 
     try {
-      const response = await fetch('/api/reset/undo', {
+      const response = await fetch('/participation/api/reset/undo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ undoData: undoData.undoData })
@@ -267,7 +276,7 @@ export default function PresentationView({ params }: { params: { id: string } })
     setProcessingPointAdjustments(prev => new Set(prev).add(studentId));
 
     try {
-      const response = await fetch(`/api/students/${studentId}/points`, {
+      const response = await fetch(`/participation/api/students/${studentId}/points`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action })
@@ -297,7 +306,7 @@ export default function PresentationView({ params }: { params: { id: string } })
     setProcessingBulkAdjustment(true);
 
     try {
-      const response = await fetch(`/api/rooms/${params.id}/bulk-points`, {
+      const response = await fetch(`/participation/api/rooms/${params.id}/bulk-points`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action })
@@ -323,7 +332,7 @@ export default function PresentationView({ params }: { params: { id: string } })
     setProcessingRandomCall(true);
 
     try {
-      const response = await fetch(`/api/rooms/${params.id}/call-random`, {
+      const response = await fetch(`/participation/api/rooms/${params.id}/call-random`, {
         method: 'POST'
       });
 
@@ -343,8 +352,8 @@ export default function PresentationView({ params }: { params: { id: string } })
     }
   };
 
-  const handleExportCSV = () => {
-    window.open(`/api/export/csv?roomId=${params.id}`, '_blank');
+  const handleExportCSV = (type: 'logs' | 'totals' = 'logs') => {
+    window.open(`/participation/api/export/csv?roomId=${params.id}&type=${type}`, '_blank');
   };
 
   // Priority sorting function for pending participations
@@ -414,10 +423,25 @@ export default function PresentationView({ params }: { params: { id: string } })
                 Undo Reset
               </Button>
             )}
-            <Button variant="outline" onClick={handleExportCSV} size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              Export CSV
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="w-4 h-4 mr-2" />
+                  Export CSV
+                  <ChevronDown className="w-4 h-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExportCSV('totals')}>
+                  <BarChart className="w-4 h-4 mr-2" />
+                  Export Student Totals
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportCSV('logs')}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Export Participation Logs
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               variant="outline"
               onClick={() => setShowFullscreen(!showFullscreen)}

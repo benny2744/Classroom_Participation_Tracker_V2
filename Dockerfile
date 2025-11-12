@@ -1,90 +1,78 @@
-
-# Multi-stage Docker build for Next.js app
+# ===== base =====
 FROM node:18-alpine AS base
 
-# Install dependencies only when needed
+# ===== deps: install JS deps with Yarn 4 (node_modules linker) =====
 FROM base AS deps
-RUN apk add --no-cache libc6-compat curl
 WORKDIR /app
-
-# Install modern Yarn
+RUN apk add --no-cache libc6-compat
 RUN corepack enable && corepack prepare yarn@4.5.0 --activate
 
-# Copy package files
+# Copy only manifests to leverage cache
 COPY app/package.json ./
-# Handle yarn.lock - copy if exists, create if symlink
-COPY app/yarn.lock* ./
+COPY app/yarn.lock ./
 
-# Install dependencies
+# Configure Yarn inside the project (requires package.json)
+RUN yarn config set nodeLinker node-modules
+
+# Install deps
 RUN yarn install --immutable
 
-# Rebuild the source code only when needed
+# ===== builder: compile the app & generate Prisma client =====
 FROM base AS builder
 WORKDIR /app
-
-# Install modern Yarn
 RUN corepack enable && corepack prepare yarn@4.5.0 --activate
 
+# Bring deps first, then full source (so prisma/schema.prisma exists)
 COPY --from=deps /app/node_modules ./node_modules
 COPY app/ .
 
-# Fix Prisma schema configuration
-RUN sed -i 's|output = ".*"|output = "../node_modules/.prisma/client"|g' prisma/schema.prisma || true
+# Ensure a public dir exists so later COPY never fails (even if repo has none)
+RUN mkdir -p public
 
-# Generate Prisma client (requires DATABASE_URL but doesn't need real DB)
+# Ensure Prisma client goes to default path (remove any custom `output = "..."`)
+RUN sed -i 's|^\s*output\s*=\s*".*"||' prisma/schema.prisma || true
+
+# Prisma needs a URL to generate; it won't actually connect
 ENV DATABASE_URL="postgresql://placeholder:placeholder@placeholder:5432/placeholder"
-RUN npx prisma generate
 
-# Configure Next.js for standalone output
-ENV NEXT_OUTPUT_MODE=standalone
+# Generate Prisma client with the SAME version as @prisma/client
+RUN VER=$(node -p "require('./package.json').dependencies['@prisma/client'] || (require('./package.json').devDependencies && require('./package.json').devDependencies['@prisma/client'])") \
+ && echo "Using Prisma CLI ${VER}" \
+ && npx --yes prisma@${VER} generate \
+ && ls -la node_modules/@prisma/client || (echo 'Prisma client missing' && exit 1)
+
+# Build Next.js (non-standalone; runtime uses `next start`)
 ENV NODE_ENV=production
-
-# Build the Next.js application
 RUN yarn build
 
-# Production image, copy all the files and run next
-FROM base AS runner
+# ===== runner: run with `next start` (no standalone required) =====
+FROM node:18-alpine AS runner
 WORKDIR /app
-
-# Install curl for health checks and modern Yarn
-RUN apk add --no-cache curl
-RUN corepack enable && corepack prepare yarn@4.5.0 --activate
-
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# Copy built application
-COPY --from=builder /app/public ./public
-
-# Copy standalone build (for Next.js standalone output)
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-# Copy Prisma files for runtime
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-
-# Copy package.json and yarn.lock for runtime dependency installation
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/yarn.lock ./yarn.lock
-RUN yarn workspaces focus --production
-
-# Create startup script
-COPY --chown=nextjs:nodejs docker-entrypoint.sh ./
-RUN chmod +x docker-entrypoint.sh
-
-USER nextjs
-
-EXPOSE 3000
-
-# Use proper ENV format
+ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:3000/api/health || exit 1
+# Non-root user
+RUN addgroup --system --gid 1001 nodejs \
+ && adduser  --system --uid 1001 nextjs
 
-CMD ["./docker-entrypoint.sh"]
+# Bring build output, deps, and runtime bits
+COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=deps    --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+
+# Prisma engines + client at runtime
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+
+USER nextjs
+EXPOSE 3000
+
+# Run the Next server
+CMD ["node_modules/.bin/next", "start", "-p", "3000"]
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD wget -qO- http://localhost:3000/api/health || exit 1

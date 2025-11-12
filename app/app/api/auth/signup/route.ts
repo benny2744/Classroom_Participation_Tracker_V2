@@ -6,8 +6,16 @@ import bcrypt from 'bcryptjs';
 export async function POST(request: Request) {
   try {
     const { email, password, name } = await request.json();
+    
+    console.log('[SIGNUP] Request received:', { 
+      email: email ? `${email.substring(0, 3)}***` : 'missing',
+      hasPassword: !!password,
+      hasName: !!name,
+      timestamp: new Date().toISOString()
+    });
 
     if (!email || !password || !name) {
+      console.log('[SIGNUP] Missing fields:', { hasEmail: !!email, hasPassword: !!password, hasName: !!name });
       return NextResponse.json(
         { error: 'Email, password, and name are required' },
         { status: 400 }
@@ -21,9 +29,22 @@ export async function POST(request: Request) {
       );
     }
 
+    // Normalize email to lowercase
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedName = name.trim();
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(normalizedEmail)) {
+      return NextResponse.json(
+        { error: 'Invalid email format' },
+        { status: 400 }
+      );
+    }
+
     // Check if user already exists
     const existingTeacher = await prisma.teacher.findUnique({
-      where: { email }
+      where: { email: normalizedEmail }
     });
 
     if (existingTeacher) {
@@ -39,12 +60,13 @@ export async function POST(request: Request) {
     // Create teacher with hashed password
     const teacher = await prisma.teacher.create({
       data: {
-        name,
-        email,
+        name: normalizedName,
+        email: normalizedEmail,
         password: hashedPassword
       }
     });
 
+    console.log('[SIGNUP] Success - Teacher created:', { id: teacher.id, email: normalizedEmail });
     return NextResponse.json({ 
       success: true, 
       user: { 
@@ -53,10 +75,22 @@ export async function POST(request: Request) {
         email: teacher.email 
       } 
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Signup error:', error);
+    
+    // Handle Prisma unique constraint errors
+    if (error?.code === 'P2002') {
+      return NextResponse.json(
+        { error: 'An account with this email already exists' },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to create account' },
+      { 
+        error: 'Failed to create account',
+        details: process.env.NODE_ENV === 'development' ? String(error) : undefined
+      },
       { status: 500 }
     );
   }
