@@ -3,6 +3,46 @@
 
 All notable changes to the Classroom Participation Tracker will be documented in this file.
 
+## [2.5.0] - 2024-11-12
+
+### ✨ New Features - Presentation View Enhancements
+
+#### Added - Student List Ordering Toggle
+- **Toggle Button**: Added button next to "Class Roster" header to switch between sorting modes
+- **Points Ranking**: Default sorting by total points (highest first) - existing behavior
+- **Alphabetical Sorting**: New option to sort students alphabetically by name (A-Z)
+- **Real-time Updates**: Sorting changes apply immediately without page refresh
+- **Visual Indicator**: Button shows current sort mode ("By Points" or "A-Z")
+
+#### Added - Clear Queue Function
+- **Clear Queue Button**: New button in Teacher Actions section of presentation view
+- **Bulk Rejection**: Rejects all pending participations in the queue at once
+- **Confirmation Dialog**: Safety confirmation before clearing (shows count of items to be cleared)
+- **Visual Feedback**: Button shows pending count and is disabled when queue is empty
+- **Use Case**: Useful for clearing old submissions when starting fresh or resetting queue
+
+#### Added - Point Request Toggle
+- **Room Setting**: New `acceptPointRequests` field in Room model (default: `true`)
+- **Toggle Button**: Visual toggle in Teacher Actions showing ON/OFF status
+- **Point Submission Control**: When disabled, students cannot submit point requests
+- **Hand Raising Preserved**: Hand raising feature always works regardless of toggle state
+- **API Validation**: Submit endpoint checks setting and returns appropriate error message
+- **Use Case**: Allows teachers to pause point submissions while keeping hand raising active
+
+#### Technical Implementation
+- **Database Schema**: Added `acceptPointRequests` Boolean field to Room model
+- **API Endpoints**: 
+  - `POST /api/participations/clear-queue` - Clear all pending participations
+  - `POST /api/rooms/[id]/toggle-point-requests` - Toggle point request acceptance
+  - `GET /api/rooms/[id]/toggle-point-requests` - Get current toggle state
+- **UI Components**: Enhanced presentation view with new controls and improved layout
+- **Error Handling**: Proper validation and user feedback for all new features
+
+### 🔧 Improvements
+- **Presentation View Layout**: Improved button organization and spacing
+- **User Experience**: Better visual feedback and loading states for all new actions
+- **Code Organization**: Clean separation of concerns for new features
+
 ## [2.4.1] - 2024-09-28
 
 ### 🔧 Docker Configuration Fixes - Critical Build Issues Resolved

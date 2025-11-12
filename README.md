@@ -20,6 +20,9 @@ The Classroom Participation Tracker is a comprehensive online platform that solv
 - **📊 Presentation View**: Full class roster with live point tracking
 - **🎯 Direct Point Controls**: Individual +/- buttons for each student in presentation view
 - **⚡ Bulk Point Operations**: Add or subtract points for all students simultaneously
+- **📋 Student List Ordering**: Toggle between points ranking and alphabetical sorting
+- **🗑️ Clear Queue**: Reject all pending participations at once with confirmation
+- **🔒 Point Request Control**: Toggle to enable/disable point submissions (hand raising still works)
 - **🎨 Enhanced UI**: Prominent login buttons and improved user experience
 - **🔄 Reset Functionality**: Individual student or full class reset options
 - **📱 Responsive Design**: Optimized for all screen sizes with mobile-first design and adaptive layouts
@@ -141,8 +144,11 @@ Choose your preferred deployment method:
 #### 5. Presentation Mode
 - Use `/teacher/room/[roomCode]/presentation` for classroom display
 - Shows full student roster with current points
+- **Student List Ordering**: Toggle button to switch between "By Points" (default) and "A-Z" alphabetical sorting
 - **Direct Point Controls**: Use +/- buttons next to each student for instant point adjustments
 - **Bulk Point Operations**: Use the buttons at top of approval queue to add/subtract 1 point from all students
+- **Clear Queue**: Button to reject all pending participations at once (with confirmation dialog)
+- **Point Request Toggle**: Enable/disable point submissions for the room (hand raising always works)
 - Fixed approval queue remains accessible on the side
 - Optimized for screen sharing and projection
 
@@ -189,9 +195,9 @@ Choose your preferred deployment method:
 ├── app/                    # Next.js 14 app directory
 │   ├── api/               # Backend API endpoints
 │   │   ├── auth/          # Authentication endpoints
-│   │   ├── rooms/         # Room management & bulk operations
+│   │   ├── rooms/         # Room management, bulk operations, toggle point requests
 │   │   ├── students/      # Student operations & point controls
-│   │   ├── participations/# Participation approvals
+│   │   ├── participations/# Participation approvals, clear queue
 │   │   ├── reset/         # Reset functionality
 │   │   └── export/        # Data export functionality
 │   ├── student/           # Student interfaces
@@ -239,7 +245,7 @@ yarn test         # Run test suite (if implemented)
 ### Core Tables
 
 - **Teacher**: Secure teacher accounts with password authentication
-- **Room**: Teacher sessions with room codes and settings
+- **Room**: Teacher sessions with room codes and settings (includes `acceptPointRequests` toggle)
 - **Student**: Class rosters linked to rooms
 - **Session**: Individual class sessions within rooms
 - **Participation**: Student participation requests and approvals
@@ -404,8 +410,8 @@ Built with ❤️ for educators who want to enhance classroom engagement and str
 
 ---
 
-**Version**: 2.4.1  
-**Last Updated**: September 2024  
+**Version**: 2.5.0  
+**Last Updated**: November 2024  
 **Node.js**: 18+  
 **Next.js**: 14.2.28  
 **Database**: PostgreSQL with Prisma ORM  
