@@ -31,7 +31,11 @@ import {
   Minus,
   ChevronDown,
   FileText,
-  BarChart
+  BarChart,
+  Trash2,
+  ArrowUpDown,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -56,6 +60,7 @@ interface Room {
   id: string;
   name: string;
   code: string;
+  acceptPointRequests?: boolean;
 }
 
 interface Session {
@@ -76,6 +81,9 @@ export default function PresentationView({ params }: { params: { id: string } })
   const [processingPointAdjustments, setProcessingPointAdjustments] = useState<Set<string>>(new Set());
   const [processingBulkAdjustment, setProcessingBulkAdjustment] = useState(false);
   const [processingRandomCall, setProcessingRandomCall] = useState(false);
+  const [studentSortOrder, setStudentSortOrder] = useState<'points' | 'alphabetical'>('points');
+  const [isClearingQueue, setIsClearingQueue] = useState(false);
+  const [isTogglingPointRequests, setIsTogglingPointRequests] = useState(false);
 
   useEffect(() => {
     fetchAllData();
@@ -356,6 +364,56 @@ export default function PresentationView({ params }: { params: { id: string } })
     window.open(`/participation/api/export/csv?roomId=${params.id}&type=${type}`, '_blank');
   };
 
+  const handleClearQueue = async () => {
+    setIsClearingQueue(true);
+    try {
+      const response = await fetch('/participation/api/participations/clear-queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId: params.id })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(`Cleared ${data.rejectedCount} pending submission${data.rejectedCount !== 1 ? 's' : ''}`);
+        await fetchAllData();
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Failed to clear queue');
+      }
+    } catch (error) {
+      toast.error('Failed to clear queue');
+    } finally {
+      setIsClearingQueue(false);
+    }
+  };
+
+  const handleTogglePointRequests = async () => {
+    setIsTogglingPointRequests(true);
+    try {
+      const response = await fetch(`/participation/api/rooms/${params.id}/toggle-point-requests`, {
+        method: 'POST'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const newState = data.acceptPointRequests;
+        toast.success(`Point requests ${newState ? 'enabled' : 'disabled'}`);
+        // Update room state
+        if (room) {
+          setRoom({ ...room, acceptPointRequests: newState });
+        }
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Failed to toggle point requests');
+      }
+    } catch (error) {
+      toast.error('Failed to toggle point requests');
+    } finally {
+      setIsTogglingPointRequests(false);
+    }
+  };
+
   // Priority sorting function for pending participations
   const getPriorityValue = (type: string) => {
     switch (type) {
@@ -366,7 +424,14 @@ export default function PresentationView({ params }: { params: { id: string } })
     }
   };
 
-  const sortedStudents = students.sort((a, b) => b.totalPoints - a.totalPoints);
+  // Sort students based on selected order
+  const sortedStudents = [...students].sort((a, b) => {
+    if (studentSortOrder === 'alphabetical') {
+      return a.name.localeCompare(b.name);
+    } else {
+      return b.totalPoints - a.totalPoints;
+    }
+  });
   const totalParticipations = students.reduce((sum, s) => sum + s.participationsCount, 0);
   const totalPendingCount = pendingParticipations.length;
   
@@ -457,7 +522,7 @@ export default function PresentationView({ params }: { params: { id: string } })
       <div className="flex flex-col lg:flex-row h-[calc(100vh-80px)]">
         {/* Class Roster - Left Panel */}
         <div className="flex-1 lg:flex-[3] p-3 lg:p-6 overflow-y-auto">
-          <div className="mb-6">
+            <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg lg:text-xl font-semibold flex items-center gap-2">
                 <Users className="w-4 h-4 lg:w-5 lg:h-5" />
@@ -465,8 +530,25 @@ export default function PresentationView({ params }: { params: { id: string } })
                 <span className="sm:hidden">Roster ({students.length})</span>
               </h2>
               
-              {/* Reset Controls */}
-              <div className="flex gap-1 lg:gap-2">
+              {/* Sort Order Toggle and Reset Controls */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setStudentSortOrder(studentSortOrder === 'points' ? 'alphabetical' : 'points')}
+                  className="text-xs lg:text-sm px-2 lg:px-3"
+                >
+                  <ArrowUpDown className="w-3 h-3 lg:w-4 lg:h-4 mr-1" />
+                  <span className="hidden sm:inline">
+                    {studentSortOrder === 'points' ? 'By Points' : 'A-Z'}
+                  </span>
+                  <span className="sm:hidden">
+                    {studentSortOrder === 'points' ? 'Pts' : 'A-Z'}
+                  </span>
+                </Button>
+                
+                {/* Reset Controls */}
+                <div className="flex gap-1 lg:gap-2">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="outline" size="sm" className="text-xs lg:text-sm px-2 lg:px-3">
@@ -514,6 +596,7 @@ export default function PresentationView({ params }: { params: { id: string } })
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+                </div>
               </div>
             </div>
 
@@ -653,18 +736,20 @@ export default function PresentationView({ params }: { params: { id: string } })
               <span className="sm:hidden">Q ({pendingParticipations.length})</span>
             </h3>
             
-            {/* Call Random Student Button */}
+            {/* Teacher Actions */}
             <div className="space-y-2 mb-4 pb-3 border-b">
               <p className="text-xs text-gray-600 font-medium">
                 <span className="hidden sm:inline">Teacher Actions:</span>
                 <span className="sm:hidden">Actions:</span>
               </p>
+              
+              {/* Call Random Student Button */}
               <Button
                 variant="default"
                 size="sm"
                 onClick={handleCallRandomStudent}
                 disabled={processingRandomCall || students.length === 0}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-xs px-2 py-1 h-auto"
+                className="w-full bg-purple-600 hover:bg-purple-700 text-xs px-2 py-1 h-auto mb-2"
               >
                 <Users className="w-2 h-2 lg:w-3 lg:h-3 mr-1" />
                 {processingRandomCall ? (
@@ -677,6 +762,83 @@ export default function PresentationView({ params }: { params: { id: string } })
                   <>
                     <span className="hidden sm:inline">Call Random Student</span>
                     <span className="sm:hidden">Random Call</span>
+                  </>
+                )}
+              </Button>
+
+              {/* Clear Queue Button */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isClearingQueue || pendingParticipations.length === 0}
+                    className="w-full text-red-600 hover:bg-red-50 border-red-200 text-xs px-2 py-1 h-auto"
+                  >
+                    <Trash2 className="w-2 h-2 lg:w-3 lg:h-3 mr-1" />
+                    {isClearingQueue ? (
+                      <>
+                        <RefreshCw className="w-2 h-2 lg:w-3 lg:h-3 mr-1 animate-spin" />
+                        <span className="hidden sm:inline">Clearing...</span>
+                        <span className="sm:hidden">...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="hidden sm:inline">Clear Queue ({pendingParticipations.length})</span>
+                        <span className="sm:hidden">Clear ({pendingParticipations.length})</span>
+                      </>
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear All Pending Submissions?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will reject all {pendingParticipations.length} pending submission{pendingParticipations.length !== 1 ? 's' : ''} in the queue. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleClearQueue} className="bg-red-600 hover:bg-red-700">
+                      Clear Queue
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              {/* Toggle Point Requests */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleTogglePointRequests}
+                disabled={isTogglingPointRequests}
+                className={`w-full text-xs px-2 py-1 h-auto ${
+                  room?.acceptPointRequests !== false
+                    ? 'text-green-600 hover:bg-green-50 border-green-200'
+                    : 'text-red-600 hover:bg-red-50 border-red-200'
+                }`}
+              >
+                {isTogglingPointRequests ? (
+                  <>
+                    <RefreshCw className="w-2 h-2 lg:w-3 lg:h-3 mr-1 animate-spin" />
+                    <span className="hidden sm:inline">Toggling...</span>
+                    <span className="sm:hidden">...</span>
+                  </>
+                ) : (
+                  <>
+                    {room?.acceptPointRequests !== false ? (
+                      <>
+                        <ToggleRight className="w-2 h-2 lg:w-3 lg:h-3 mr-1" />
+                        <span className="hidden sm:inline">Point Requests: ON</span>
+                        <span className="sm:hidden">Points: ON</span>
+                      </>
+                    ) : (
+                      <>
+                        <ToggleLeft className="w-2 h-2 lg:w-3 lg:h-3 mr-1" />
+                        <span className="hidden sm:inline">Point Requests: OFF</span>
+                        <span className="sm:hidden">Points: OFF</span>
+                      </>
+                    )}
                   </>
                 )}
               </Button>

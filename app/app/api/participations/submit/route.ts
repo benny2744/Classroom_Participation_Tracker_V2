@@ -56,6 +56,14 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check if point requests are accepted (only for POINTS type)
+    if (type === 'POINTS' && !room.acceptPointRequests) {
+      return NextResponse.json(
+        { error: 'Point requests are currently disabled for this room' },
+        { status: 403 }
+      );
+    }
+
     const activeSession = room.sessions[0];
     if (!activeSession) {
       return NextResponse.json(

@@ -66,7 +66,8 @@ export async function GET(
       room: {
         id: room.id,
         name: room.name,
-        code: room.code
+        code: room.code,
+        acceptPointRequests: room.acceptPointRequests
       },
       students: studentsWithPoints,
       activeSession: room.sessions[0] || null
