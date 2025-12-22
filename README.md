@@ -29,6 +29,7 @@ The Classroom Participation Tracker is a comprehensive online platform that solv
 - **📈 CSV Export**: Export participation data for gradebooks
 - **📁 CSV Import**: Upload student rosters via CSV files
 - **🗑️ Room Management**: Safe room deletion with confirmation dialogs
+- **👥 Roster Management**: Add or remove students from roster in room settings
 
 ## 🚀 Quick Start
 
@@ -134,6 +135,11 @@ Choose your preferred deployment method:
 - **Add Students**: Click "Add Students" button on any room card
   - Upload CSV file with new student names
   - System automatically skips duplicates
+- **Roster Management**: Navigate to room settings tab
+  - **Add Individual Students**: Use the form to add students one at a time
+  - **Bulk Upload**: Upload CSV file with multiple student names
+  - **View Roster**: See all students with their participation stats
+  - **Remove Students**: Delete students from roster with confirmation (warns about participation data deletion)
 - **Delete Room**: Click the red trash icon
   - Confirms deletion impact (students and participation records)
   - Permanently removes all associated data
@@ -203,7 +209,7 @@ Choose your preferred deployment method:
 ├── app/                    # Next.js 14 app directory
 │   ├── api/               # Backend API endpoints
 │   │   ├── auth/          # Authentication endpoints
-│   │   ├── rooms/         # Room management, bulk operations, toggle point requests
+│   │   ├── rooms/         # Room management, bulk operations, toggle point requests, roster management
 │   │   ├── students/      # Student operations & point controls
 │   │   ├── participations/# Participation approvals, clear queue
 │   │   ├── reset/         # Reset functionality

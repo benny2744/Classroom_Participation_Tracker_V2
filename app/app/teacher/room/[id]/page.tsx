@@ -7,12 +7,25 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { 
   Users, 
   BarChart3, 
@@ -28,7 +41,12 @@ import {
   CheckCircle,
   XCircle,
   ChevronDown,
-  FileText
+  FileText,
+  UserPlus,
+  UserMinus,
+  Upload,
+  Trash2,
+  RefreshCw
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -68,9 +86,26 @@ interface RoomStats {
   }>;
 }
 
+interface RosterStudent {
+  id: string;
+  name: string;
+  totalPoints: number;
+  participationsCount: number;
+  pendingCount: number;
+  createdAt: string;
+}
+
 export default function RoomManagementPage({ params }: { params: { id: string } }) {
   const [roomStats, setRoomStats] = useState<RoomStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Roster management state
+  const [rosterStudents, setRosterStudents] = useState<RosterStudent[]>([]);
+  const [isLoadingRoster, setIsLoadingRoster] = useState(false);
+  const [newStudentName, setNewStudentName] = useState('');
+  const [isAddingStudent, setIsAddingStudent] = useState(false);
+  const [isDeletingStudent, setIsDeletingStudent] = useState<string | null>(null);
+  const [isUploadingCSV, setIsUploadingCSV] = useState(false);
 
   useEffect(() => {
     fetchRoomStats();
@@ -100,6 +135,117 @@ export default function RoomManagementPage({ params }: { params: { id: string } 
 
   const handleExportCSV = (type: 'logs' | 'totals' = 'logs') => {
     window.open(`/participation/api/export/csv?roomId=${params.id}&type=${type}`, '_blank');
+  };
+
+  // Roster management functions
+  const fetchRoster = async () => {
+    setIsLoadingRoster(true);
+    try {
+      const response = await fetch(`/participation/api/rooms/${params.id}/students`);
+      if (response.ok) {
+        const data = await response.json();
+        setRosterStudents(data.students || []);
+      } else {
+        toast.error('Failed to load roster');
+      }
+    } catch (error) {
+      console.error('Error fetching roster:', error);
+      toast.error('Failed to load roster');
+    } finally {
+      setIsLoadingRoster(false);
+    }
+  };
+
+  const handleAddStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStudentName.trim()) {
+      toast.error('Please enter a student name');
+      return;
+    }
+
+    setIsAddingStudent(true);
+    try {
+      const response = await fetch(`/participation/api/rooms/${params.id}/students`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentName: newStudentName.trim() })
+      });
+
+      if (response.ok) {
+        toast.success(`Added "${newStudentName.trim()}" to roster`);
+        setNewStudentName('');
+        fetchRoster();
+        fetchRoomStats(); // Update stats
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to add student');
+      }
+    } catch (error) {
+      console.error('Error adding student:', error);
+      toast.error('Failed to add student');
+    } finally {
+      setIsAddingStudent(false);
+    }
+  };
+
+  const handleDeleteStudent = async (studentId: string, studentName: string) => {
+    setIsDeletingStudent(studentId);
+    try {
+      const response = await fetch(`/participation/api/rooms/${params.id}/students/${studentId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(data.message || `Removed "${studentName}" from roster`);
+        fetchRoster();
+        fetchRoomStats(); // Update stats
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to remove student');
+      }
+    } catch (error) {
+      console.error('Error removing student:', error);
+      toast.error('Failed to remove student');
+    } finally {
+      setIsDeletingStudent(null);
+    }
+  };
+
+  const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingCSV(true);
+    const formData = new FormData();
+    formData.append('csvFile', file);
+
+    try {
+      const response = await fetch(`/participation/api/rooms/${params.id}/upload-students`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(`Added ${data.studentsAdded} students to roster`);
+        if (data.duplicatesSkipped > 0) {
+          toast.info(`${data.duplicatesSkipped} duplicates were skipped`);
+        }
+        fetchRoster();
+        fetchRoomStats(); // Update stats
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to upload CSV');
+      }
+    } catch (error) {
+      console.error('Error uploading CSV:', error);
+      toast.error('Failed to upload CSV');
+    } finally {
+      setIsUploadingCSV(false);
+      // Reset the file input
+      e.target.value = '';
+    }
   };
 
   if (isLoading) {
@@ -245,11 +391,19 @@ export default function RoomManagementPage({ params }: { params: { id: string } 
         </div>
 
         {/* Detailed Tabs */}
-        <Tabs defaultValue="students" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="students" className="space-y-6" onValueChange={(value) => {
+          if (value === 'settings' && rosterStudents.length === 0) {
+            fetchRoster();
+          }
+        }}>
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="students">Top Students</TabsTrigger>
             <TabsTrigger value="sessions">Sessions</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-1">
+              <Settings className="w-4 h-4" />
+              Settings
+            </TabsTrigger>
           </TabsList>
           
           {/* Top Students Tab */}
@@ -448,6 +602,205 @@ export default function RoomManagementPage({ params }: { params: { id: string } 
                       </span>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="settings">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Add Student */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserPlus className="w-5 h-5" />
+                    Add Student
+                  </CardTitle>
+                  <CardDescription>
+                    Add a single student to the roster
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleAddStudent} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="studentName">Student Name</Label>
+                      <Input
+                        id="studentName"
+                        placeholder="Enter student name"
+                        value={newStudentName}
+                        onChange={(e) => setNewStudentName(e.target.value)}
+                        disabled={isAddingStudent}
+                      />
+                    </div>
+                    <Button type="submit" disabled={isAddingStudent || !newStudentName.trim()}>
+                      {isAddingStudent ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Adding...
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          Add Student
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+
+              {/* Upload CSV */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Upload className="w-5 h-5" />
+                    Bulk Upload
+                  </CardTitle>
+                  <CardDescription>
+                    Upload a CSV file with student names (one name per line)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
+                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600 mb-2">
+                        Upload a CSV file with student names
+                      </p>
+                      <Label htmlFor="csvUpload" className="cursor-pointer">
+                        <Button variant="outline" asChild disabled={isUploadingCSV}>
+                          <span>
+                            {isUploadingCSV ? (
+                              <>
+                                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="w-4 h-4 mr-2" />
+                                Select CSV File
+                              </>
+                            )}
+                          </span>
+                        </Button>
+                      </Label>
+                      <Input
+                        id="csvUpload"
+                        type="file"
+                        accept=".csv,.txt"
+                        onChange={handleCSVUpload}
+                        className="hidden"
+                        disabled={isUploadingCSV}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Roster List */}
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="w-5 h-5" />
+                        Student Roster ({rosterStudents.length})
+                      </CardTitle>
+                      <CardDescription>
+                        Manage students in this room
+                      </CardDescription>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={fetchRoster}
+                      disabled={isLoadingRoster}
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingRoster ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingRoster ? (
+                    <div className="text-center py-8">
+                      <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+                      <p className="text-gray-600">Loading roster...</p>
+                    </div>
+                  ) : rosterStudents.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">No students in roster</p>
+                      <p className="text-sm text-gray-500">Add students using the form above or upload a CSV file</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {rosterStudents
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((student) => (
+                        <div 
+                          key={student.id} 
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-sm font-medium text-blue-700">
+                                {student.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium">{student.name}</p>
+                              <p className="text-xs text-gray-500">
+                                {student.totalPoints} points • {student.participationsCount} participations
+                                {student.pendingCount > 0 && (
+                                  <span className="text-amber-600"> • {student.pendingCount} pending</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                disabled={isDeletingStudent === student.id}
+                              >
+                                {isDeletingStudent === student.id ? (
+                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Remove Student?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to remove <strong>{student.name}</strong> from the roster?
+                                  {student.participationsCount > 0 && (
+                                    <span className="block mt-2 text-amber-600">
+                                      Warning: This will also delete {student.participationsCount} participation record{student.participationsCount !== 1 ? 's' : ''} for this student.
+                                    </span>
+                                  )}
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleDeleteStudent(student.id, student.name)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Remove Student
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

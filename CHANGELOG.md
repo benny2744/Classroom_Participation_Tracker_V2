@@ -3,6 +3,43 @@
 
 All notable changes to the Classroom Participation Tracker will be documented in this file.
 
+## [2.6.0] - 2024-12-22
+
+### ✨ New Features - Roster Management
+
+#### Added - Student Roster Management in Settings
+- **Settings Tab**: New "Settings" tab added to room management page
+- **Add Individual Students**: Form to add students one at a time by name
+  - Input validation and loading states
+  - Real-time roster updates after adding
+- **Bulk Upload**: CSV file upload for adding multiple students
+  - Reuses existing upload-students API endpoint
+  - Shows count of students added and duplicates skipped
+- **View Full Roster**: Complete student roster display
+  - Shows all students sorted alphabetically
+  - Displays participation stats (points, participations, pending count)
+  - Refresh button to reload roster data
+- **Remove Students**: Delete students from roster
+  - Confirmation dialog with warning about participation data deletion
+  - Shows how many participation records will be deleted
+  - Cascades deletion to all related participation records
+
+#### Technical Implementation
+- **New API Endpoint**: 
+  - `DELETE /api/rooms/[id]/students/[studentId]` - Remove student from roster
+  - Validates room and student existence
+  - Returns deletion details including participation count
+- **Enhanced UI Components**: 
+  - Settings tab with three sections: Add Student, Bulk Upload, Roster List
+  - Alert dialogs for student removal confirmation
+  - Loading states and error handling throughout
+- **Database**: Uses existing cascade delete relationships (onDelete: Cascade)
+
+### 🔧 Improvements
+- **Room Management Page**: Enhanced with Settings tab for comprehensive roster management
+- **User Experience**: Clear visual feedback and warnings for destructive actions
+- **Code Organization**: Clean separation of roster management functionality
+
 ## [2.5.0] - 2024-11-12
 
 ### ✨ New Features - Presentation View Enhancements
