@@ -19,7 +19,8 @@ services:
     image: redis:7-alpine
     container_name: participation_tracker_redis
     ports:
-      - "127.0.0.1:6379:6379"
+      # Port block: 4050-4059 (participation)  (4040-4049 reserved for Dify)
+      - "127.0.0.1:4051:6379"
     restart: unless-stopped
 
   app:
@@ -40,7 +41,8 @@ services:
       DATABASE_URL: "postgresql://tracker_user:jdETkY08Gw0Y4gTQ@database:5432/participation_tracker?connect_timeout=15"
       REDIS_URL: "redis://redis:6379/0"         # << add this
     ports:
-      - "127.0.0.1:3010:3000"
+      # Port block: 4050-4059 (participation)  (4040-4049 reserved for Dify)
+      - "127.0.0.1:4050:3000"
     # Force non-standalone runtime:
     command: ["node", "node_modules/next/dist/bin/next", "start", "-p", "3000"]
     restart: unless-stopped
